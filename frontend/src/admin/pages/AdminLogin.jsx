@@ -56,14 +56,27 @@ const AdminLogin = () => {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json().catch(() => null);
+      // Read raw response text then attempt to parse JSON.
+      const raw = await res.text();
+      let data = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch (err) {
+        data = null;
+      }
 
       if (!res.ok) {
-        throw new Error(data?.message || "Login failed");
+        // prefer JSON message if present, otherwise show raw text
+        throw new Error((data && data.message) || raw || "Login failed");
+      }
+
+      // Ensure we received a token
+      if (!data || !data.token) {
+        throw new Error("Invalid server response: missing token. Check backend logs or inspect response.");
       }
 
       localStorage.setItem("admin_token", data.token);
-      localStorage.setItem("admin_user", JSON.stringify(data.user));
+      localStorage.setItem("admin_user", JSON.stringify(data.user || {}));
       
       toast.success("Login successful! Redirecting...", { id: loadingToast });
       

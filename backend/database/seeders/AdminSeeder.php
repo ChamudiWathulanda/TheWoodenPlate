@@ -14,7 +14,7 @@ class AdminSeeder extends Seeder
             ['email' => 'chamudi@gmail.com'],
             [
                 'name' => 'Admin',
-                'password' => Hash::make('poppy75123'), // hardcoded password
+                'password' => Hash::make('12345678'), // hardcoded password
                 'is_admin' => true,
             ]
         );

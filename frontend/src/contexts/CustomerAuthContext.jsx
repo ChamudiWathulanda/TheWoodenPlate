@@ -1,8 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 
-// Set base URL for all axios requests
-axios.defaults.baseURL = 'http://localhost:8000';
+// Set base URL for all axios requests (using Vite proxy)
+axios.defaults.baseURL = '';
 
 const CustomerAuthContext = createContext();
 
