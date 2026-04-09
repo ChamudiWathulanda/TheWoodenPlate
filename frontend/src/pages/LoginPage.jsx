@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
+import { useCart } from '../customer/context/CartContext';
 import toast from 'react-hot-toast';
 
 // Food images for the side panel
@@ -11,11 +12,24 @@ const LoginPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { sendOTP, verifyOTP } = useCustomerAuth();
+    const { itemCount } = useCart();
     const [step, setStep] = useState(1); // 1: email, 2: OTP
     const [email, setEmail] = useState(location.state?.email || '');
+    const [redirectTo] = useState(location.state?.redirectTo || null);
     const [otp, setOTP] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        const authMessage = location.state?.authMessage;
+
+        if (!authMessage) {
+            return;
+        }
+
+        toast.error(authMessage);
+        navigate(location.pathname, { replace: true, state: null });
+    }, [location.pathname, location.state, navigate]);
 
     const handleSendOTP = async (e) => {
         e.preventDefault();
@@ -43,7 +57,7 @@ const LoginPage = () => {
 
         if (result.success) {
             toast.success('Login successful!');
-            navigate('/my-orders');
+            navigate(redirectTo || (itemCount > 0 ? '/cart' : '/my-orders'));
         } else {
             setError(result.message);
             toast.error(result.message);

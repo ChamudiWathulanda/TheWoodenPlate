@@ -3,6 +3,66 @@ import { useParams, useNavigate } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
 import toast from "react-hot-toast";
 
+const getReceiptUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `http://localhost:8000/storage/${path}`;
+};
+
+const isPdfReceipt = (path) => path?.toLowerCase().endsWith(".pdf");
+const getAdminInvoiceUrl = (orderId) => `http://localhost:8000/api/admin/orders/${orderId}/invoice`;
+
+const getFilenameFromResponse = (res, fallback) => {
+  const contentDisposition = res.headers.get("content-disposition");
+  const filenameMatch = contentDisposition?.match(/filename="?([^"]+)"?/i);
+  return filenameMatch?.[1] || fallback;
+};
+
+const downloadBlobResponse = async (res, fallbackFilename) => {
+  const blob = await res.blob();
+  const filename = getFilenameFromResponse(res, fallbackFilename);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+const downloadInvoice = async (orderId) => {
+  const token = localStorage.getItem("admin_token");
+  const res = await fetch(getAdminInvoiceUrl(orderId), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to download invoice");
+  }
+
+  await downloadBlobResponse(res, `invoice-${orderId}.pdf`);
+};
+
+const downloadReceipt = async (orderId) => {
+  const token = localStorage.getItem("admin_token");
+
+  const res = await fetch(`http://localhost:8000/api/admin/orders/${orderId}/receipt-download`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to download receipt");
+  }
+
+  await downloadBlobResponse(res, `order-${orderId}-receipt`);
+};
+
 const ViewOrder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -17,7 +77,7 @@ const ViewOrder = () => {
     try {
       const token = localStorage.getItem("admin_token");
 
-      const res = await fetch(`http://localhost:8000/api/orders/${id}`, {
+      const res = await fetch(`http://localhost:8000/api/admin/orders/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -97,6 +157,10 @@ const ViewOrder = () => {
     );
   }
 
+  const receiptUrl = getReceiptUrl(order.payment_receipt_path);
+  const hasReceipt = Boolean(receiptUrl);
+  const receiptIsPdf = isPdfReceipt(order.payment_receipt_path);
+
   return (
     <AdminLayout>
       <div className="p-6">
@@ -112,14 +176,20 @@ const ViewOrder = () => {
               </p>
             </div>
             <div className="flex gap-3">
-              <a
-                href={`http://localhost:8000/api/orders/${order.id}/invoice`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await downloadInvoice(order.id);
+                  } catch (error) {
+                    console.error(error);
+                    toast.error("Failed to download invoice");
+                  }
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
               >
                 Download Invoice
-              </a>
+              </button>
               <button
                 onClick={() => navigate("/admin/orders")}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200"
@@ -196,13 +266,13 @@ const ViewOrder = () => {
                           {item.product?.description || "-"}
                         </td>
                         <td className="px-4 py-3 text-sm text-right text-gray-900">
-                          ${parseFloat(item.price).toFixed(2)}
+                          Rs. {parseFloat(item.price).toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-sm text-right text-gray-900">
                           {item.quantity}
                         </td>
                         <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
-                          ${parseFloat(item.subtotal).toFixed(2)}
+                          Rs. {parseFloat(item.subtotal).toFixed(2)}
                         </td>
                       </tr>
                     ))}
@@ -216,7 +286,7 @@ const ViewOrder = () => {
                         Total:
                       </td>
                       <td className="px-4 py-3 text-right text-lg font-bold text-gray-900">
-                        ${parseFloat(order.total_amount).toFixed(2)}
+                        Rs. {parseFloat(order.total_amount).toFixed(2)}
                       </td>
                     </tr>
                   </tfoot>
@@ -231,6 +301,61 @@ const ViewOrder = () => {
                 <p className="text-gray-700 bg-gray-50 p-4 rounded border-l-4 border-blue-500">
                   {order.notes}
                 </p>
+              </div>
+            )}
+
+            {hasReceipt && (
+              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 md:p-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Payment Receipt
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Uploaded by the customer for online payment verification.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <a
+                      href={receiptUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                    >
+                      Preview Receipt
+                    </a>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await downloadReceipt(order.id);
+                        } catch (error) {
+                          console.error(error);
+                          toast.error("Failed to download receipt");
+                        }
+                      }}
+                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors duration-200"
+                    >
+                      Download Receipt
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+                  {receiptIsPdf ? (
+                    <iframe
+                      src={receiptUrl}
+                      title="Payment Receipt"
+                      className="h-[32rem] w-full"
+                    />
+                  ) : (
+                    <img
+                      src={receiptUrl}
+                      alt="Payment receipt"
+                      className="max-h-[32rem] w-full object-contain bg-white"
+                    />
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -345,13 +470,25 @@ const ViewOrder = () => {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Total Amount:</span>
                   <span className="font-semibold text-lg text-blue-600">
-                    ${parseFloat(order.total_amount).toFixed(2)}
+                    Rs. {parseFloat(order.total_amount).toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Created:</span>
                   <span className="font-semibold">
                     {new Date(order.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Payment Method:</span>
+                  <span className="font-semibold capitalize">
+                    {order.payment_method || "N/A"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Receipt:</span>
+                  <span className="font-semibold">
+                    {hasReceipt ? "Uploaded" : "Not uploaded"}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">

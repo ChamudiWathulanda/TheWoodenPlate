@@ -36,6 +36,8 @@ Route::prefix('public')->group(function () {
     Route::get('menu-items', [PublicMenuController::class, 'menuItems']);
     Route::get('menu-items/{id}', [PublicMenuController::class, 'showMenuItem']);
     Route::get('featured-items', [PublicMenuController::class, 'featuredItems']);
+    Route::get('promotions', [PublicMenuController::class, 'promotions']);
+    Route::get('new-products', [PublicMenuController::class, 'newProducts']);
 
     // Orders (Guest Checkout)
     Route::post('orders', [PublicOrderController::class, 'store']);
@@ -60,6 +62,7 @@ Route::middleware('auth:sanctum')->prefix('customer')->group(function () {
     Route::get('me', [CustomerAuthController::class, 'me']);
 
     // Customer's Own Orders
+    Route::post('orders', [PublicOrderController::class, 'store']);
     Route::get('orders', [OrderController::class, 'customerIndex']);
     Route::get('orders/{id}', [OrderController::class, 'show']);
 });
@@ -110,7 +113,11 @@ Route::prefix('admin')->group(function () {
 
         // Order Management - Admin
         Route::get('orders', [OrderController::class, 'adminIndex'])->name('admin.orders.index');
+        Route::get('orders/{id}', [OrderController::class, 'show'])->name('admin.orders.show');
         Route::patch('orders/{id}/status', [OrderController::class, 'updateStatus'])->name('admin.orders.updateStatus');
+        Route::patch('orders/{id}/payment-status', [OrderController::class, 'updatePaymentStatus'])->name('admin.orders.updatePaymentStatus');
+        Route::get('orders/{id}/invoice', [OrderController::class, 'generateInvoice'])->name('admin.orders.invoice');
+        Route::get('orders/{id}/receipt-download', [OrderController::class, 'downloadReceipt'])->name('admin.orders.downloadReceipt');
 
         // Reports
         Route::prefix('reports')->group(function () {

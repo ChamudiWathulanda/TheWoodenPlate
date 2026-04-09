@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 
-// Set base URL for all axios requests (using Vite proxy)
+// Set base URL for all axios requests
 axios.defaults.baseURL = '';
 
 const CustomerAuthContext = createContext();
@@ -19,17 +19,41 @@ export const CustomerAuthProvider = ({ children }) => {
     const [token, setToken] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Initialize from localStorage
     useEffect(() => {
-        const storedToken = localStorage.getItem('customerToken');
-        const storedCustomer = localStorage.getItem('customer');
+        const initializeAuth = async () => {
+            const storedToken = localStorage.getItem('customerToken');
+            const storedCustomer = localStorage.getItem('customer');
 
-        if (storedToken && storedCustomer) {
-            setToken(storedToken);
-            setCustomer(JSON.parse(storedCustomer));
+            if (!storedToken) {
+                setLoading(false);
+                return;
+            }
+
             axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-        }
-        setLoading(false);
+
+            try {
+                const response = await axios.get('/api/customer/me');
+                const currentCustomer = response.data?.customer || (storedCustomer ? JSON.parse(storedCustomer) : null);
+
+                setToken(storedToken);
+                setCustomer(currentCustomer);
+
+                if (currentCustomer) {
+                    localStorage.setItem('customer', JSON.stringify(currentCustomer));
+                }
+            } catch (error) {
+                console.error('Failed to restore customer session:', error);
+                localStorage.removeItem('customerToken');
+                localStorage.removeItem('customer');
+                delete axios.defaults.headers.common['Authorization'];
+                setToken(null);
+                setCustomer(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        initializeAuth();
     }, []);
 
     const register = async (userData) => {

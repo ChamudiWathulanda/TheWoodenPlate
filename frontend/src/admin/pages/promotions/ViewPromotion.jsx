@@ -135,7 +135,7 @@ const ViewPromotion = () => {
                   value={
                     promotion.type === "percentage"
                       ? `${promotion.value}%`
-                      : `$${parseFloat(promotion.value).toFixed(2)}`
+                      : `Rs. ${parseFloat(promotion.value).toFixed(2)}`
                   }
                 />
                 <Field

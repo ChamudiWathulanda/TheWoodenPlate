@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
+use App\Models\MenuItem;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -73,6 +76,7 @@ class ProductAPIController extends Controller
             }
 
             $product = Product::create($data);
+            $this->syncMenuItem($product);
 
             return response()->json([
                 'success' => true,
@@ -114,6 +118,8 @@ class ProductAPIController extends Controller
             }
 
             $product->update($data);
+            $product->refresh();
+            $this->syncMenuItem($product);
 
             return response()->json([
                 'success' => true,
@@ -133,12 +139,17 @@ class ProductAPIController extends Controller
     public function destroy(Product $product)
     {
         try {
+            $linkedMenuItem = $this->canSyncMenuItems()
+                ? MenuItem::where('product_id', $product->id)->first()
+                : null;
+
             // Delete image if exists
             if ($product->image && Storage::disk('public')->exists($product->image)) {
                 Storage::disk('public')->delete($product->image);
             }
 
             $product->delete();
+            $linkedMenuItem?->delete();
 
             return response()->json([
                 'success' => true,
@@ -151,5 +162,58 @@ class ProductAPIController extends Controller
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
+    }
+
+    private function syncMenuItem(Product $product): void
+    {
+        if (!$this->canSyncMenuItems()) {
+            return;
+        }
+
+        $menuItem = MenuItem::firstOrNew(['product_id' => $product->id]);
+
+        if (!$product->is_available) {
+            if ($menuItem->exists) {
+                $menuItem->update(['is_available' => false]);
+            }
+
+            return;
+        }
+
+        $categoryId = $this->resolveCategoryId($product->category);
+        if (!$categoryId) {
+            return;
+        }
+
+        $menuItem->fill([
+            'category_id' => $categoryId,
+            'name' => $product->name,
+            'price' => $product->price,
+            'image' => $product->image,
+            'description' => $product->description,
+            'is_available' => true,
+        ]);
+
+        if (!$menuItem->exists) {
+            $menuItem->product_id = $product->id;
+        }
+
+        $menuItem->save();
+    }
+
+    private function resolveCategoryId(?string $categoryName): ?int
+    {
+        if (!$categoryName) {
+            return null;
+        }
+
+        return Category::query()
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower(trim($categoryName))])
+            ->value('id');
+    }
+
+    private function canSyncMenuItems(): bool
+    {
+        return Schema::hasTable('menu_items') && Schema::hasColumn('menu_items', 'product_id');
     }
 }

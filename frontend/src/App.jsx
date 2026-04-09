@@ -2,6 +2,7 @@ import './App.css'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { CartProvider } from './customer/context/CartContext.jsx'
+import { WishlistProvider } from './customer/context/WishlistContext.jsx'
 import { CustomerAuthProvider } from './contexts/CustomerAuthContext.jsx'
 
 // Customer Pages (Public)
@@ -12,6 +13,7 @@ import CartPage from './customer/pages/CartPage.jsx'
 import GalleryPage from './customer/pages/GalleryPage.jsx'
 import ReservationPage from './customer/pages/ReservationPage.jsx'
 import ContactPage from './customer/pages/ContactPage.jsx'
+import WishlistPage from './customer/pages/WishlistPage.jsx'
 // Customer Auth Pages
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
@@ -30,6 +32,7 @@ import ViewCustomer from './admin/pages/customers/ViewCustomer.jsx'
 // Order Pages
 import OrderList from './admin/pages/orders/OrderList.jsx'
 import ViewOrder from './admin/pages/orders/ViewOrder.jsx'
+import CheckoutPage from './customer/pages/CheckoutPage.jsx'
 
 // Product Pages
 import ProductList from './admin/pages/products/ProductList.jsx'
@@ -59,6 +62,7 @@ import ViewMenuItem from './admin/pages/menu-items/ViewMenuItem.jsx'
 import TableList from './admin/pages/tables/TableList.jsx'
 import CreateTable from './admin/pages/tables/CreateTable.jsx'
 import EditTable from './admin/pages/tables/EditTable.jsx'
+import ViewTable from './admin/pages/tables/ViewTable.jsx'
 
 // Reservation Pages
 import ReservationList from './admin/pages/reservations/ReservationList.jsx'
@@ -88,7 +92,8 @@ function App() {
   return (
     <CustomerAuthProvider>
       <CartProvider>
-        <Toaster
+        <WishlistProvider>
+          <Toaster
           position="top-center"
           gutter={10}
           containerStyle={{
@@ -117,7 +122,7 @@ function App() {
             },
           }}
         />
-        <Routes>
+          <Routes>
            {/* Customer Routes */}
            <Route
                 path="/"
@@ -157,11 +162,7 @@ function App() {
 
               <Route
                 path="/reservation"
-                element={
-                  <CustomerLayout>
-                    <ReservationPage />
-                  </CustomerLayout>
-                }
+                element={<ReservationPage />}
               />
 
               <Route
@@ -175,17 +176,23 @@ function App() {
 
               <Route
                 path="/cart"
-                element={
-                  <CustomerLayout>
-                    <CartPage />
-                  </CustomerLayout>
-                }
+                element={<CartPage />}
+              />
+
+              <Route
+                path="/wishlist"
+                element={<WishlistPage />}
+              />
+
+              <Route
+                path="/checkout"
+                element={<CheckoutPage />}
               />
 
             {/* Customer Auth */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="About" element={<AboutPage />} />
+            <Route path="/my-orders" element={<MyOrdersPage />} />
             
 
 
@@ -238,6 +245,7 @@ function App() {
       {/* Table Routes */}
       <Route path="/admin/tables" element={<TableList />} />
       <Route path="/admin/tables/create" element={<CreateTable />} />
+      <Route path="/admin/tables/:id" element={<ViewTable />} />
       <Route path="/admin/tables/:id/edit" element={<EditTable />} />
       
       {/* Reservation Routes */}
@@ -264,7 +272,8 @@ function App() {
       
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+          </Routes>
+        </WishlistProvider>
       </CartProvider>
     </CustomerAuthProvider>
   )

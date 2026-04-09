@@ -4,6 +4,16 @@ import AdminLayout from "../../components/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
 import toast from "react-hot-toast";
 
+const parseJsonResponse = async (response) => {
+  const text = await response.text();
+
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error("Server returned an invalid response. Please check the API endpoint.");
+  }
+};
+
 const EditTable = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -25,12 +35,17 @@ const EditTable = () => {
         setLoading(true);
         const response = await fetch(
           `http://localhost:8000/api/admin/tables/${id}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
         );
 
         if (!response.ok) throw new Error("Failed to fetch table");
 
-        const result = await response.json();
+        const result = await parseJsonResponse(response);
         const data = result.data || result;
 
         setFormData({
@@ -75,12 +90,13 @@ const EditTable = () => {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            Accept: "application/json",
           },
           body: JSON.stringify(formData),
         }
       );
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
 
       if (!response.ok) {
         if (response.status === 422 && data.errors) {

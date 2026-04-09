@@ -1,14 +1,15 @@
 import React from 'react';
-import CustomerLayout from '../layout/customerLayout';
+import ContactSection from '../components/ContactSection';
+import Footer from '../components/Footer';
 
 const ContactPage = () => {
 	return (
-		<CustomerLayout>
-			<div className="w-full px-4 sm:px-6 py-16">
-				<h1 className="text-3xl font-semibold">Contact</h1>
-				<p className="text-[#E7D2B6]/70 mt-2">Contact page placeholder.</p>
+		<>
+			<div className="pt-20">
+				<ContactSection />
 			</div>
-		</CustomerLayout>
+			<Footer />
+		</>
 	);
 };
 

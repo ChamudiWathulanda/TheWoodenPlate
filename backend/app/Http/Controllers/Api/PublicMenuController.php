@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\MenuItem;
+use App\Models\Promotion;
+use App\Models\Product;
 use Illuminate\Http\Request;
 
 class PublicMenuController extends Controller
@@ -16,7 +18,7 @@ class PublicMenuController extends Controller
     {
         $categories = Category::where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'description', 'image']);
+            ->get(['id', 'name', 'image']);
 
         return response()->json([
             'success' => true,
@@ -71,13 +73,56 @@ class PublicMenuController extends Controller
     public function featuredItems()
     {
         $items = MenuItem::where('is_available', true)
-            ->where('is_featured', true) // You can add this column later
+            ->where('is_popular', true)
+            ->with('category:id,name')
             ->limit(8)
             ->get();
 
         return response()->json([
             'success' => true,
             'data' => $items
+        ]);
+    }
+
+    /**
+     * Get active promotions (valid now or upcoming)
+     */
+    public function promotions()
+    {
+        $now = now();
+        $promotions = Promotion::where('is_active', true)
+            ->where(function ($query) use ($now) {
+                // Either no start time, or start time has passed
+                $query->whereNull('starts_at')
+                    ->orWhere('starts_at', '<=', $now);
+            })
+            ->where(function ($query) use ($now) {
+                // Either no end time, or end time has not passed
+                $query->whereNull('ends_at')
+                    ->orWhere('ends_at', '>=', $now);
+            })
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $promotions
+        ]);
+    }
+
+    /**
+     * Get new products
+     */
+    public function newProducts()
+    {
+        $products = Product::where('is_available', true)
+            ->where('is_new', true)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $products
         ]);
     }
 }

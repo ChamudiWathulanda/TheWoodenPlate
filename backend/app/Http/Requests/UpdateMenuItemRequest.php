@@ -19,7 +19,8 @@ class UpdateMenuItemRequest extends FormRequest
             'price' => 'sometimes|required|numeric|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'description' => 'nullable|string',
-            'is_available' => 'nullable'
+            'is_available' => 'nullable',
+            'is_popular' => 'nullable|boolean'
         ];
     }
 
@@ -27,6 +28,7 @@ class UpdateMenuItemRequest extends FormRequest
     {
         $this->merge([
             'is_available' => filter_var($this->is_available, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true,
+            'is_popular' => filter_var($this->is_popular, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
         ]);
     }
 

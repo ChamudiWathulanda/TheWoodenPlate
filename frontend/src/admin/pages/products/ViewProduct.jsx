@@ -154,7 +154,7 @@ const ViewProduct = () => {
                 <Field label="Name" value={product.name} />
                 <Field
                   label="Price"
-                  value={product.price ? `$${parseFloat(product.price).toFixed(2)}` : null}
+                  value={product.price ? `Rs. ${parseFloat(product.price).toFixed(2)}` : null}
                 />
                 <Field label="Category" value={product.category} />
                 <Field label="Image URL" value={product.image} />

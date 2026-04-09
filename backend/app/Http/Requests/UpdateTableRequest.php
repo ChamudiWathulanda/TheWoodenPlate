@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateTableRequest extends FormRequest
 {
@@ -13,10 +14,17 @@ class UpdateTableRequest extends FormRequest
 
     public function rules(): array
     {
-        $tableId = $this->route('table');
+        $table = $this->route('table');
+        $tableId = is_object($table) ? $table->getKey() : $table;
 
         return [
-            'table_number' => 'sometimes|required|string|max:50|unique:tables,table_number,' . $tableId,
+            'table_number' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('tables', 'table_number')->ignore($tableId),
+            ],
             'chair_count' => 'sometimes|required|integer|min:1|max:20',
             'is_active' => 'nullable|boolean',
             'notes' => 'nullable|string',

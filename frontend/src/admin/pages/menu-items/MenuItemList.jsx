@@ -10,6 +10,7 @@ const MenuItemList = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   // pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,6 +61,10 @@ const MenuItemList = () => {
     fetchMenuItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory]);
 
   const handleDeleteClick = (id) => {
     setDeleteModal({ open: true, id });
@@ -133,14 +138,20 @@ const MenuItemList = () => {
   };
 
   // pagination derived values
+  const filteredMenuItems = useMemo(() => {
+    if (selectedCategory === 'all') return menuItems;
+
+    return menuItems.filter((item) => String(item.category_id) === selectedCategory);
+  }, [menuItems, selectedCategory]);
+
   const totalPages = useMemo(
-    () => Math.ceil(menuItems.length / itemsPerPage) || 1,
-    [menuItems.length, itemsPerPage]
+    () => Math.ceil(filteredMenuItems.length / itemsPerPage) || 1,
+    [filteredMenuItems.length, itemsPerPage]
   );
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedMenuItems = menuItems.slice(startIndex, endIndex);
+  const paginatedMenuItems = filteredMenuItems.slice(startIndex, endIndex);
 
   const handleItemsPerPageChange = (e) => {
     setItemsPerPage(Number(e.target.value));
@@ -186,22 +197,38 @@ const MenuItemList = () => {
               <p className="text-sm font-medium text-gray-900">
                 Menu Item List{' '}
                 <span className="text-gray-400 font-normal">
-                  ({menuItems.length})
+                  ({filteredMenuItems.length})
                 </span>
               </p>
 
               {menuItems.length > 0 && (
-                <select
-                  value={itemsPerPage}
-                  onChange={handleItemsPerPageChange}
-                  className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700
-                             focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value={10}>10 per page</option>
-                  <option value={25}>25 per page</option>
-                  <option value={50}>50 per page</option>
-                  <option value={100}>100 per page</option>
-                </select>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700
+                               focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All categories</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={String(category.id)}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={itemsPerPage}
+                    onChange={handleItemsPerPageChange}
+                    className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700
+                               focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={10}>10 per page</option>
+                    <option value={25}>25 per page</option>
+                    <option value={50}>50 per page</option>
+                    <option value={100}>100 per page</option>
+                  </select>
+                </div>
               )}
             </div>
 
@@ -235,24 +262,35 @@ const MenuItemList = () => {
                   </thead>
 
                   <tbody className="text-sm text-gray-700">
-                    {menuItems.length === 0 ? (
+                    {filteredMenuItems.length === 0 ? (
                       <tr>
                         <td
                           colSpan={7}
                           className="px-5 py-12 border-t border-gray-200 text-center"
                         >
                           <p className="text-gray-900 font-semibold">
-                            No menu items found
+                            {menuItems.length === 0 ? 'No menu items found' : 'No menu items match this category'}
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
-                            Create your first menu item to see it here.
+                            {menuItems.length === 0
+                              ? 'Create your first menu item to see it here.'
+                              : 'Try selecting a different category or clear the filter.'}
                           </p>
-                          <button
-                            onClick={() => navigate('/admin/menu-items/create')}
-                            className="mt-4 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
-                          >
-                            + Create Menu Item
-                          </button>
+                          {menuItems.length === 0 ? (
+                            <button
+                              onClick={() => navigate('/admin/menu-items/create')}
+                              className="mt-4 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
+                            >
+                              + Create Menu Item
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setSelectedCategory('all')}
+                              className="mt-4 px-5 py-2.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium"
+                            >
+                              Clear Filter
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ) : (
@@ -409,7 +447,7 @@ const MenuItemList = () => {
             )}
 
             {/* Pagination footer */}
-            {!loading && menuItems.length > 0 && (
+            {!loading && filteredMenuItems.length > 0 && (
               <div className="px-5 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <p className="text-sm text-gray-600">
                   Showing{' '}
@@ -418,11 +456,11 @@ const MenuItemList = () => {
                   </span>{' '}
                   to{' '}
                   <span className="font-semibold text-gray-900">
-                    {Math.min(endIndex, menuItems.length)}
+                    {Math.min(endIndex, filteredMenuItems.length)}
                   </span>{' '}
                   of{' '}
                   <span className="font-semibold text-gray-900">
-                    {menuItems.length}
+                    {filteredMenuItems.length}
                   </span>{' '}
                   results
                 </p>

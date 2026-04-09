@@ -1,77 +1,72 @@
-import React, { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useMemo, useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import MenuItemTiltCard from "../components/MenuItemTiltCard";
 import Footer from "../components/Footer";
-
-const categories = [
-  { label: "All Items", value: "all" },
-  { label: "Burgers", value: "burgers" },
-  { label: "Sides", value: "sides" },
-  { label: "Drinks", value: "drinks" },
-  { label: "Desserts", value: "desserts" },
-];
-
-// dummy items (later API)
-const allItems = [
-  {
-    id: 1,
-    category: "burgers",
-    name: "Classic Beef Burger",
-    description: "Juicy beef patty, cheese, lettuce, house sauce",
-    price: 1850,
-    image:
-      "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1200&auto=format&fit=crop",
-  },
-  {
-    id: 2,
-    category: "burgers",
-    name: "Crispy Chicken Burger",
-    description: "Crunchy chicken, spicy mayo, fresh slaw",
-    price: 1650,
-    image:
-      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=1200&auto=format&fit=crop",
-  },
-  {
-    id: 3,
-    category: "sides",
-    name: "Loaded Fries",
-    description: "Cheese sauce, spicy bits, fresh herbs",
-    price: 950,
-    image:
-      "https://images.unsplash.com/photo-1561758033-d89a9ad46330?q=80&w=1200&auto=format&fit=crop",
-  },
-  {
-    id: 4,
-    category: "drinks",
-    name: "Iced Coffee",
-    description: "Chilled coffee with milk & sweetness",
-    price: 650,
-    image:
-      "https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=1200&auto=format&fit=crop",
-  },
-  {
-    id: 5,
-    category: "desserts",
-    name: "Chocolate Brownie",
-    description: "Rich chocolate brownie with soft center",
-    price: 750,
-    image:
-      "https://images.unsplash.com/photo-1541781408260-3c22b5f65b25?q=80&w=1200&auto=format&fit=crop",
-  },
-];
+import toast from 'react-hot-toast';
+import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 
 export default function MenuPage() {
+  const navigate = useNavigate();
   const [params] = useSearchParams();
   const initialCat = params.get("cat") || "all";
 
-  const [activeCat, setActiveCat] = useState(
-    categories.some((c) => c.value === initialCat) ? initialCat : "all"
-  );
+  const [activeCat, setActiveCat] = useState("all");
   const [q, setQ] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const { addItem } = useCart();
+  const { isInWishlist, toggleItem } = useWishlist();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Fetch categories
+        const catRes = await fetch('http://localhost:8000/api/public/categories');
+        if (!catRes.ok) throw new Error('Failed to fetch categories');
+        const catData = await catRes.json();
+        const cats = catData.data || [];
+        const catsWithFullImage = cats.map(cat => ({
+          ...cat,
+          image: cat.image ? `http://localhost:8000/storage/${cat.image}` : null
+        }));
+        setCategories([{ id: 'all', name: 'All Items' }, ...catsWithFullImage]);
+
+        // Fetch menu items
+        const itemRes = await fetch('http://localhost:8000/api/public/menu-items');
+        if (!itemRes.ok) throw new Error('Failed to fetch menu items');
+        const itemData = await itemRes.json();
+        const itemsWithFullImage = itemData.data.map(item => ({
+          ...item,
+          image: item.image ? `http://localhost:8000/storage/${item.image}` : null
+        }));
+        setMenuItems(itemsWithFullImage || []);
+      } catch (error) {
+        toast.error('Failed to load menu data');
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      const catExists = categories.some(c => c.id === initialCat || c.value === initialCat);
+      setActiveCat(catExists ? initialCat : "all");
+    }
+  }, [categories, initialCat]);
 
   const filtered = useMemo(() => {
-    let list = [...allItems];
-    if (activeCat !== "all") list = list.filter((i) => i.category === activeCat);
+    let list = [...menuItems];
+    if (activeCat !== "all") {
+      list = list.filter((i) => i.category_id === activeCat || i.category?.id === activeCat);
+    }
     if (q.trim()) {
       const t = q.toLowerCase();
       list = list.filter(
@@ -81,7 +76,7 @@ export default function MenuPage() {
       );
     }
     return list;
-  }, [activeCat, q]);
+  }, [activeCat, q, menuItems]);
 
   return (
     <>
@@ -112,11 +107,13 @@ export default function MenuPage() {
             {/* Category tabs */}
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               {categories.map((c) => {
-                const active = c.value === activeCat;
+                const catId = c.id || c.value;
+                const catName = c.name || c.label;
+                const active = catId === activeCat;
                 return (
                   <button
-                    key={c.value}
-                    onClick={() => setActiveCat(c.value)}
+                    key={catId}
+                    onClick={() => setActiveCat(catId)}
                     className={`px-5 py-2.5 rounded-full border transition text-sm font-semibold
                       ${
                         active
@@ -124,25 +121,94 @@ export default function MenuPage() {
                           : "bg-[#1A110D] text-[#E7D2B6] border-[#8B5A2B]/45 hover:border-[#C98A5A]/70"
                       }`}
                   >
-                    {c.label}
+                    {catName}
                   </button>
                 );
               })}
             </div>
 
             {/* Items grid */}
-            <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filtered.map((item) => (
-                <MenuItemTiltCard
-                  key={item.id}
-                  item={item}
-                  onAddToCart={(x) => console.log("Add to cart:", x)}
-                />
-              ))}
-            </div>
+            {loading ? (
+              <div className="mt-10 text-center text-[#BFA58A]">Loading menu...</div>
+            ) : (
+              <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filtered.map((item) => (
+                  <MenuItemTiltCard
+                    key={item.id}
+                    item={item}
+                    isWishlisted={isInWishlist(item.id)}
+                    onToggleWishlist={() => {
+                      const added = toggleItem(item);
+                      toast.success(added ? `${item.name} added to wishlist` : `${item.name} removed from wishlist`);
+                    }}
+                    onAddToCart={() => {
+                      addItem(item);
+                      toast.custom((t) => (
+                        <div className="w-72 bg-[#f5cf89]/95 border border-[#C98A5A]/60 rounded-xl p-4 shadow-xl backdrop-blur-sm">
+                          <div className="flex items-start gap-3">
+                            {/* Item Image */}
+                            <div className="relative flex-shrink-0">
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-14 h-14 object-cover rounded-lg border border-[#0F0A08]/10"
+                              />
+                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#0F0A08] rounded-full flex items-center justify-center text-xs font-bold text-[#F7F3EB]">
+                                1
+                              </div>
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1 mb-1">
+                                <span className="text-lg">✅</span>
+                                <h4 className="text-sm font-bold text-[#0F0A08]">Added to Cart!</h4>
+                              </div>
+                              <p className="text-[#0F0A08] font-semibold text-sm truncate">{item.name}</p>
+                              <p className="text-[#0F0A08]/70 text-xs">Rs. {item.price.toLocaleString()}</p>
+                            </div>
+
+                            {/* Close Button */}
+                            <button
+                              onClick={() => toast.dismiss(t.id)}
+                              className="flex-shrink-0 text-[#0F0A08]/50 hover:text-[#0F0A08] transition-colors"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              className="flex-1 py-2 bg-[#1A110D] text-[#E7D2B6] rounded-lg font-semibold text-sm hover:bg-[#231A14] transition-colors duration-200"
+                              onClick={() => {
+                                toast.dismiss(t.id);
+                                navigate('/cart');
+                              }}
+                            >
+                              <span className="mr-1">🛒</span>
+                              View Cart
+                            </button>
+                            <button
+                              className="px-3 py-2 bg-transparent border border-[#1A110D] text-[#0F0A08] rounded-lg font-semibold text-sm hover:bg-[#1A110D]/10 transition-colors duration-200"
+                              onClick={() => toast.dismiss(t.id)}
+                            >
+                              Continue
+                            </button>
+                          </div>
+                        </div>
+                      ), {
+                        duration: 4000,
+                        position: 'bottom-right'
+                      });
+                    }}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* empty */}
-            {!filtered.length && (
+            {!loading && !filtered.length && (
               <div className="mt-14 text-center text-[#BFA58A]">
                 No items found for your filter.
               </div>

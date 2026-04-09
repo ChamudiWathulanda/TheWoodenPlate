@@ -1,18 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-// helper: safely parse datetime
 const toTime = (v) => {
   if (!v) return null;
   const t = new Date(v).getTime();
   return Number.isNaN(t) ? null : t;
 };
 
-// active rule:
-// - if start_at exists => start_at <= now
-// - if end_at exists => end_at >= now
-// - if end_at missing => treat as active (optional)
 const isActive = (item, nowMs) => {
   const startMs = toTime(item.start_at || item.startAt || item.starts_at);
   const endMs = toTime(item.end_at || item.endAt || item.ends_at || item.expires_at);
@@ -29,7 +25,7 @@ export default function PromoBannerStrip() {
 
   const load = async (aliveRef) => {
     try {
-      const res = await fetch(`${API_BASE}/api/promotions`, {
+      const res = await fetch(`${API_BASE}/api/public/promotions`, {
         headers: { Accept: "application/json" },
       });
       const data = await res.json();
@@ -47,7 +43,6 @@ export default function PromoBannerStrip() {
     setLoading(true);
     load(aliveRef);
 
-    // auto refresh every 60s (so expired ones disappear)
     const t = setInterval(() => load(aliveRef), 60000);
 
     return () => {
@@ -63,13 +58,13 @@ export default function PromoBannerStrip() {
 
   if (loading) {
     return (
-      <section className="px-4 md:px-10 mt-8">
-        <div className="h-8 w-44 bg-gray-200 rounded-md mb-4 animate-pulse" />
-        <div className="flex gap-4 overflow-hidden">
+      <section className="mt-10 px-4 md:px-10">
+        <div className="mb-5 h-8 w-44 animate-pulse rounded-md bg-[#2B1C15]" />
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="min-w-[280px] md:min-w-[380px] h-44 md:h-52 bg-gray-200 rounded-2xl animate-pulse"
+              className="h-[18rem] animate-pulse rounded-[2rem] bg-[#2B1C15]"
             />
           ))}
         </div>
@@ -80,50 +75,87 @@ export default function PromoBannerStrip() {
   if (!activeItems.length) return null;
 
   return (
-    <section className="px-4 md:px-10 mt-8">
-      <div className="flex items-end justify-between mb-4">
-        <h2 className="text-xl md:text-2xl font-extrabold text-gray-900">
-          Promotions
-        </h2>
-        <p className="text-sm text-gray-500">Latest offers</p>
+    <section className="mt-10 px-4 md:px-10">
+      <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[#D7B38A]/70">
+            Signature deals
+          </p>
+          <h2 className="mt-3 text-3xl font-black text-[#F7ECD9] md:text-4xl">
+            Promotions
+          </h2>
+        </div>
+        <p className="max-w-xl text-sm text-[#E7D2B6]/60 md:text-right">
+          Spotlight offers with richer contrast, stronger hierarchy, and a cleaner premium-homepage look.
+        </p>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory">
-        {activeItems.map((p) => {
-          const img = p.image_url || p.image || p.banner_image || p.banner || "";
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        {activeItems.slice(0, 3).map((p, index) => {
+          let img = p.image_url || p.image || p.banner_image || p.banner || "";
+          if (img && !img.startsWith("http")) {
+            img = `${API_BASE}/storage/${img}`;
+          }
           const title = p.title || p.name || "Promotion";
-          const subtitle = p.subtitle || p.description || "";
-          const href = p.link || p.url || "#";
+          const subtitle = p.subtitle || p.description || "Limited-time dining experience.";
+          const href = p.link || p.url || "/menu";
 
-          return (
+          const card = (
+            <article
+              className={`group relative overflow-hidden rounded-[2rem] border border-[#8B5A2B]/35 shadow-[0_25px_80px_rgba(0,0,0,0.38)] ${
+                index === 1
+                  ? "min-h-[22rem] bg-[linear-gradient(160deg,#2F1B13_0%,#120C0A_72%)]"
+                  : "min-h-[19rem] bg-[linear-gradient(160deg,#291A13_0%,#120C0A_78%)]"
+              }`}
+            >
+              <img
+                src={img}
+                alt={title}
+                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#120C0A] via-[#120C0A]/30 to-transparent" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(215,179,138,0.18),transparent_34%)]" />
+
+              <div className="relative flex h-full flex-col justify-between p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="inline-flex rounded-full border border-[#D7B38A]/25 bg-[#D7B38A]/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#F5DEBE]">
+                    Limited offer
+                  </span>
+                  <div className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-[11px] uppercase tracking-[0.22em] text-white/70 backdrop-blur-sm">
+                    Save more
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="max-w-[15rem] text-3xl font-black text-[#FFF3E3]">
+                    {title}
+                  </h3>
+                  <p className="mt-3 max-w-[18rem] text-sm leading-7 text-white/78">
+                    {subtitle}
+                  </p>
+                  <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#FFF3E3] px-5 py-3 text-sm font-bold text-[#140D0A] transition group-hover:bg-[#F7DAB1]">
+                    Claim this offer
+                    <span aria-hidden="true">→</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          );
+
+          return href.startsWith("http") ? (
             <a
               key={p.id || `${title}-${img}`}
               href={href}
-              className="snap-start min-w-[280px] md:min-w-[420px] w-[90%] sm:w-auto"
+              target="_blank"
+              rel="noreferrer"
             >
-              <div className="relative rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-sm hover:shadow-md transition">
-                <img
-                  src={img}
-                  alt={title}
-                  className="w-full h-44 md:h-52 object-cover"
-                  loading="lazy"
-                />
-
-                {/* overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
-
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <p className="text-white text-lg font-extrabold line-clamp-1">
-                    {title}
-                  </p>
-                  {subtitle && (
-                    <p className="text-white/85 text-sm line-clamp-1">
-                      {subtitle}
-                    </p>
-                  )}
-                </div>
-              </div>
+              {card}
             </a>
+          ) : (
+            <Link key={p.id || `${title}-${img}`} to={href}>
+              {card}
+            </Link>
           );
         })}
       </div>

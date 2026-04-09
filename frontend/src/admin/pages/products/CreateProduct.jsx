@@ -13,7 +13,7 @@ const CreateProduct = () => {
     category: "",
     is_available: true,
     is_featured: false,
-    is_new: false,
+    is_new: true,
   });
 
   const [imageFile, setImageFile] = useState(null);

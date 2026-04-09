@@ -1,6 +1,7 @@
 import React, { useState } from "react";
+import WishlistButton from "./WishlistButton";
 
-export default function MenuItemTiltCard({ item, onAddToCart }) {
+export default function MenuItemTiltCard({ item, onAddToCart, onToggleWishlist, isWishlisted = false }) {
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const threshold = 10;
 
@@ -35,6 +36,15 @@ export default function MenuItemTiltCard({ item, onAddToCart }) {
         <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-[#D7B38A] text-[#0F0A08] text-sm font-extrabold">
           Rs. {Number(item.price).toLocaleString()}
         </div>
+
+        <WishlistButton
+          active={isWishlisted}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleWishlist?.(item);
+          }}
+          className="absolute top-4 left-4 w-10 h-10 bg-black/35 border-[#8B5A2B]/60 hover:bg-black/55"
+        />
       </div>
 
       <div className="p-5">

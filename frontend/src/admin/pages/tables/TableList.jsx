@@ -4,6 +4,16 @@ import AdminLayout from "../../components/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
 import toast from "react-hot-toast";
 
+const parseJsonResponse = async (response) => {
+  const text = await response.text();
+
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error("Server returned an invalid response. Please check the API endpoint.");
+  }
+};
+
 const TableList = () => {
   const navigate = useNavigate();
 
@@ -31,7 +41,7 @@ const TableList = () => {
 
       if (!res.ok) throw new Error("Failed to fetch tables");
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       // Your API uses { success: true, data: [...] }
       setTables(data.data || []);
     } catch (e) {
@@ -65,7 +75,7 @@ const TableList = () => {
         },
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.success) throw new Error(data.message || "Delete failed");
 
       toast.success("Table deleted successfully!", {
@@ -99,7 +109,7 @@ const TableList = () => {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.success) throw new Error(data.message || "Update failed");
 
       toast.success("Status updated", {

@@ -226,7 +226,7 @@ const EditPromotion = () => {
                                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
                   >
                     <option value="percentage">Percentage (%)</option>
-                    <option value="fixed">Fixed Amount ($)</option>
+                    <option value="fixed">Fixed Amount (Rs.)</option>
                   </select>
                 </div>
 
@@ -249,7 +249,7 @@ const EditPromotion = () => {
                     placeholder={
                       formData.type === "percentage"
                         ? "e.g., 20 for 20%"
-                        : "e.g., 10.00 for $10"
+                        : "e.g., 1000.00 for Rs. 1000"
                     }
                   />
                   {formData.type === "percentage" && (

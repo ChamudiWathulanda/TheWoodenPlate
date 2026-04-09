@@ -1,15 +1,16 @@
 import React from 'react';
-import CustomerLayout from '../layout/customerLayout';
+import GallerySection from '../components/GallerySection';
+import Footer from '../components/Footer';
 
 const GalleryPage = () => {
-	// return (
-	// 	<CustomerLayout>
-	// 		<div className="w-full px-4 sm:px-6 py-16">
-	// 			<h1 className="text-3xl font-semibold">Gallery</h1>
-	// 			<p className="text-[#E7D2B6]/70 mt-2">Gallery page placeholder.</p>
-	// 		</div>
-	// 	</CustomerLayout>
-	// );
+	return (
+		<>
+			<div className="pt-20">
+				<GallerySection />
+			</div>
+			<Footer />
+		</>
+	);
 };
 
 export default GalleryPage;

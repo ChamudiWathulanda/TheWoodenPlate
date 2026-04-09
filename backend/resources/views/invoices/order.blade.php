@@ -151,9 +151,9 @@
             <tr>
                 <td>{{ $item->product->name }}</td>
                 <td>{{ $item->product->description ?? '-' }}</td>
-                <td class="text-right">${{ number_format($item->price, 2) }}</td>
+                <td class="text-right">Rs. {{ number_format($item->price, 2) }}</td>
                 <td class="text-right">{{ $item->quantity }}</td>
-                <td class="text-right">${{ number_format($item->subtotal, 2) }}</td>
+                <td class="text-right">Rs. {{ number_format($item->subtotal, 2) }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -163,11 +163,11 @@
         <table>
             <tr>
                 <td>Subtotal:</td>
-                <td class="text-right">${{ number_format($order->total_amount, 2) }}</td>
+                <td class="text-right">Rs. {{ number_format($order->total_amount, 2) }}</td>
             </tr>
             <tr class="total-row">
                 <td>Total:</td>
-                <td class="text-right">${{ number_format($order->total_amount, 2) }}</td>
+                <td class="text-right">Rs. {{ number_format($order->total_amount, 2) }}</td>
             </tr>
         </table>
     </div>

@@ -17,7 +17,12 @@ const ViewTable = () => {
         setLoading(true);
         const response = await fetch(
           `http://localhost:8000/api/admin/tables/${id}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
         );
 
         if (!response.ok) throw new Error("Failed to fetch table");
