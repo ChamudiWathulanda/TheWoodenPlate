@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast'
 import { CartProvider } from './customer/context/CartContext.jsx'
 import { WishlistProvider } from './customer/context/WishlistContext.jsx'
 import { CustomerAuthProvider } from './contexts/CustomerAuthContext.jsx'
+import ScrollToTop from './components/ScrollToTop.jsx'
 
 // Customer Pages (Public)
 import HomePage from './customer/pages/HomePage.jsx'
@@ -85,6 +86,12 @@ import ViewSetting from './admin/pages/settings/ViewSetting.jsx'
 
 // Gallery Pages (Admin)
 import GalleryList from './admin/pages/gallery/GalleryList.jsx'
+import {
+  AdminGuestRoute,
+  AdminOnlyRoute,
+  CustomerGuestRoute,
+  CustomerOnlyRoute,
+} from './routes/RouteGuards.jsx'
 
 import CustomerLayout from './customer/layout/customerLayout.jsx'
 
@@ -93,6 +100,7 @@ function App() {
     <CustomerAuthProvider>
       <CartProvider>
         <WishlistProvider>
+          <ScrollToTop />
           <Toaster
           position="top-center"
           gutter={10}
@@ -184,15 +192,16 @@ function App() {
                 element={<WishlistPage />}
               />
 
-              <Route
-                path="/checkout"
-                element={<CheckoutPage />}
-              />
+            <Route element={<CustomerGuestRoute />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+            </Route>
 
-            {/* Customer Auth */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/my-orders" element={<MyOrdersPage />} />
+            <Route element={<CustomerOnlyRoute />}>
+              <Route path="/my-orders" element={<MyOrdersPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/wishlist" element={<WishlistPage />} />
+            </Route>
             
 
 
@@ -205,70 +214,75 @@ function App() {
 
         
         {/* Admin Routes */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-      
-      {/* Customer Routes */}
-      <Route path="/admin/customers" element={<CustomerList />} />
-      <Route path="/admin/customers/create" element={<CreateCustomer />} />
-      <Route path="/admin/customers/edit/:id" element={<EditCustomer />} />
-      <Route path="/admin/customers/view/:id" element={<ViewCustomer />} />
-      
-      {/* Order Routes */}
-      <Route path="/admin/orders" element={<OrderList />} />
-      <Route path="/admin/orders/view/:id" element={<ViewOrder />} />
-      
-      {/* Product Routes */}
-      <Route path="/admin/products" element={<ProductList />} />
-      <Route path="/admin/products/create" element={<CreateProduct />} />
-      <Route path="/admin/products/edit/:id" element={<EditProduct />} />
-      <Route path="/admin/products/view/:id" element={<ViewProduct />} />
-      
-      {/* Promotion Routes */}
-      <Route path="/admin/promotions" element={<PromotionList />} />
-      <Route path="/admin/promotions/create" element={<CreatePromotion />} />
-      <Route path="/admin/promotions/edit/:id" element={<EditPromotion />} />
-      <Route path="/admin/promotions/view/:id" element={<ViewPromotion />} />
-      
-      {/* Category Routes */}
-      <Route path="/admin/categories" element={<CategoryList />} />
-      <Route path="/admin/categories/create" element={<CreateCategory />} />
-      <Route path="/admin/categories/:id/edit" element={<EditCategory />} />
-      <Route path="/admin/categories/:id" element={<ViewCategory />} />
-      
-      {/* Menu Item Routes */}
-      <Route path="/admin/menu-items" element={<MenuItemList />} />
-      <Route path="/admin/menu-items/create" element={<CreateMenuItem />} />
-      <Route path="/admin/menu-items/:id/edit" element={<EditMenuItem />} />
-      <Route path="/admin/menu-items/:id" element={<ViewMenuItem />} />
-      
-      {/* Table Routes */}
-      <Route path="/admin/tables" element={<TableList />} />
-      <Route path="/admin/tables/create" element={<CreateTable />} />
-      <Route path="/admin/tables/:id" element={<ViewTable />} />
-      <Route path="/admin/tables/:id/edit" element={<EditTable />} />
-      
-      {/* Reservation Routes */}
-      <Route path="/admin/reservations" element={<ReservationList />} />
-      
-      {/* Inventory Routes */}
-      <Route path="/admin/inventory" element={<InventoryDashboard />} />
-      <Route path="/admin/ingredients" element={<IngredientList />} />
-      <Route path="/admin/ingredients/create" element={<CreateIngredient />} />
-      <Route path="/admin/ingredients/:id/edit" element={<EditIngredient />} />
-      <Route path="/admin/stock-movements" element={<StockMovementList />} />
-      
-      {/* Reports Routes */}
-      <Route path="/admin/reports" element={<Reports />} />
-      
-      {/* Settings Routes */}
-      <Route path="/admin/settings" element={<SettingsList />} />
-      <Route path="/admin/settings/create" element={<CreateSetting />} />
-      <Route path="/admin/settings/edit/:id" element={<EditSetting />} />
-      <Route path="/admin/settings/view/:id" element={<ViewSetting />} />
-      
-      {/* Gallery Routes (Admin) */}
-      <Route path="/admin/gallery" element={<GalleryList />} />
+        <Route element={<AdminGuestRoute />}>
+          <Route path="/admin/login" element={<AdminLogin />} />
+        </Route>
+
+        <Route element={<AdminOnlyRoute />}>
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        
+          {/* Customer Routes */}
+          <Route path="/admin/customers" element={<CustomerList />} />
+          <Route path="/admin/customers/create" element={<CreateCustomer />} />
+          <Route path="/admin/customers/edit/:id" element={<EditCustomer />} />
+          <Route path="/admin/customers/view/:id" element={<ViewCustomer />} />
+          
+          {/* Order Routes */}
+          <Route path="/admin/orders" element={<OrderList />} />
+          <Route path="/admin/orders/view/:id" element={<ViewOrder />} />
+          
+          {/* Product Routes */}
+          <Route path="/admin/products" element={<ProductList />} />
+          <Route path="/admin/products/create" element={<CreateProduct />} />
+          <Route path="/admin/products/edit/:id" element={<EditProduct />} />
+          <Route path="/admin/products/view/:id" element={<ViewProduct />} />
+          
+          {/* Promotion Routes */}
+          <Route path="/admin/promotions" element={<PromotionList />} />
+          <Route path="/admin/promotions/create" element={<CreatePromotion />} />
+          <Route path="/admin/promotions/edit/:id" element={<EditPromotion />} />
+          <Route path="/admin/promotions/view/:id" element={<ViewPromotion />} />
+          
+          {/* Category Routes */}
+          <Route path="/admin/categories" element={<CategoryList />} />
+          <Route path="/admin/categories/create" element={<CreateCategory />} />
+          <Route path="/admin/categories/:id/edit" element={<EditCategory />} />
+          <Route path="/admin/categories/:id" element={<ViewCategory />} />
+          
+          {/* Menu Item Routes */}
+          <Route path="/admin/menu-items" element={<MenuItemList />} />
+          <Route path="/admin/menu-items/create" element={<CreateMenuItem />} />
+          <Route path="/admin/menu-items/:id/edit" element={<EditMenuItem />} />
+          <Route path="/admin/menu-items/:id" element={<ViewMenuItem />} />
+          
+          {/* Table Routes */}
+          <Route path="/admin/tables" element={<TableList />} />
+          <Route path="/admin/tables/create" element={<CreateTable />} />
+          <Route path="/admin/tables/:id" element={<ViewTable />} />
+          <Route path="/admin/tables/:id/edit" element={<EditTable />} />
+          
+          {/* Reservation Routes */}
+          <Route path="/admin/reservations" element={<ReservationList />} />
+          
+          {/* Inventory Routes */}
+          <Route path="/admin/inventory" element={<InventoryDashboard />} />
+          <Route path="/admin/ingredients" element={<IngredientList />} />
+          <Route path="/admin/ingredients/create" element={<CreateIngredient />} />
+          <Route path="/admin/ingredients/:id/edit" element={<EditIngredient />} />
+          <Route path="/admin/stock-movements" element={<StockMovementList />} />
+          
+          {/* Reports Routes */}
+          <Route path="/admin/reports" element={<Reports />} />
+          
+          {/* Settings Routes */}
+          <Route path="/admin/settings" element={<SettingsList />} />
+          <Route path="/admin/settings/create" element={<CreateSetting />} />
+          <Route path="/admin/settings/edit/:id" element={<EditSetting />} />
+          <Route path="/admin/settings/view/:id" element={<ViewSetting />} />
+          
+          {/* Gallery Routes (Admin) */}
+          <Route path="/admin/gallery" element={<GalleryList />} />
+        </Route>
       
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

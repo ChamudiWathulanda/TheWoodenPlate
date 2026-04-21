@@ -9,6 +9,7 @@ use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Services\PromotionEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,10 @@ use Illuminate\Support\Str;
 
 class PublicOrderController extends Controller
 {
+    public function __construct(private PromotionEngine $promotionEngine)
+    {
+    }
+
     /**
      * Place a new order (guest checkout)
      */
@@ -39,7 +44,7 @@ class PublicOrderController extends Controller
             'items' => 'required|array|min:1',
             'items.*.menu_item_id' => 'required|exists:menu_items,id',
             'items.*.quantity' => 'required|integer|min:1',
-            'items.*.price' => 'required|numeric|min:0',
+            'items.*.price' => 'nullable|numeric|min:0',
             'special_instructions' => 'nullable|string|max:500',
             'payment_method' => 'required|in:cash,card,online',
             'card_type' => 'nullable|required_if:payment_method,card|in:visa,mastercard,amex,discover,jcb,diners,other',
@@ -82,14 +87,31 @@ class PublicOrderController extends Controller
                 );
             }
 
+            $menuItems = MenuItem::with('category:id,name')
+                ->whereIn('id', collect($validated['items'])->pluck('menu_item_id'))
+                ->get()
+                ->keyBy('id');
+
+            $cartLines = collect($validated['items'])->map(function (array $item) use ($menuItems) {
+                $menuItem = $menuItems->get($item['menu_item_id']);
+                if (!$menuItem) {
+                    throw new \RuntimeException('One or more menu items are no longer available.');
+                }
+
+                return [
+                    'menu_item_id' => $menuItem->id,
+                    'name' => $menuItem->name,
+                    'category_id' => $menuItem->category_id,
+                    'category_name' => $menuItem->category?->name,
+                    'quantity' => (int) $item['quantity'],
+                    'unit_price' => (float) $menuItem->price,
+                ];
+            });
+
+            $pricing = $this->promotionEngine->calculate($cartLines);
+
             // Generate unique order number
             $orderNumber = 'ORD-' . strtoupper(Str::random(8));
-
-            // Calculate totals
-            $subtotal = 0;
-            foreach ($validated['items'] as $item) {
-                $subtotal += $item['price'] * $item['quantity'];
-            }
 
             // Build notes for the order to store extra details (instructions and payment info)
             $notesParts = [];
@@ -141,16 +163,19 @@ class PublicOrderController extends Controller
             // Create order
             $order = Order::create([
                 'customer_id' => $customer->id,
+                'promotion_id' => $pricing['primary_promotion_id'],
                 'order_number' => $orderNumber,
                 'customer_name' => $validated['customer_name'],
                 'customer_phone' => $validated['customer_phone'],
                 'customer_email' => $validated['customer_email'],
                 'order_type' => $validated['order_type'],
                 'delivery_address' => $validated['delivery_address'],
-                'subtotal' => $subtotal,
-                'discount' => 0,
-                'total' => $subtotal,
-                'total_amount' => $subtotal,
+                'subtotal' => $pricing['subtotal'],
+                'discount' => $pricing['discount'],
+                'discount_amount' => $pricing['discount'],
+                'applied_promotions' => $pricing['applied_promotions'],
+                'total' => $pricing['total'],
+                'total_amount' => $pricing['total'],
                 'status' => 'pending',
                 'is_locked' => false,
                 'special_instructions' => $validated['special_instructions'],
@@ -161,8 +186,8 @@ class PublicOrderController extends Controller
             ]);
 
             // Create order items
-            foreach ($validated['items'] as $item) {
-                $menuItem = MenuItem::findOrFail($item['menu_item_id']);
+            foreach ($pricing['line_items'] as $lineItem) {
+                $menuItem = $menuItems->get($lineItem['menu_item_id']);
 
                 $product = Product::firstOrCreate(
                     ['name' => $menuItem->name, 'price' => $menuItem->price],
@@ -177,9 +202,9 @@ class PublicOrderController extends Controller
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                    'subtotal' => $item['price'] * $item['quantity'],
+                    'quantity' => $lineItem['quantity'],
+                    'price' => $lineItem['unit_price'],
+                    'subtotal' => $lineItem['discounted_subtotal'],
                 ]);
             }
 
@@ -194,7 +219,10 @@ class PublicOrderController extends Controller
                 'data' => [
                     'order_number' => $orderNumber,
                     'order_id' => $order->id,
+                    'subtotal' => $order->subtotal,
+                    'discount' => $order->discount,
                     'total' => $order->total,
+                    'applied_promotions' => $order->applied_promotions,
                     'payment_status' => $order->payment_status,
                 ]
             ], 201);
@@ -265,6 +293,46 @@ class PublicOrderController extends Controller
         ];
 
         return $estimates[$status] ?? 'Processing...';
+    }
+
+    public function preview(Request $request)
+    {
+        if (is_string($request->input('items'))) {
+            $decodedItems = json_decode($request->input('items'), true);
+
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedItems)) {
+                $request->merge(['items' => $decodedItems]);
+            }
+        }
+
+        $validated = $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.menu_item_id' => 'required|exists:menu_items,id',
+            'items.*.quantity' => 'required|integer|min:1',
+        ]);
+
+        $menuItems = MenuItem::with('category:id,name')
+            ->whereIn('id', collect($validated['items'])->pluck('menu_item_id'))
+            ->get()
+            ->keyBy('id');
+
+        $cartLines = collect($validated['items'])->map(function (array $item) use ($menuItems) {
+            $menuItem = $menuItems->get($item['menu_item_id']);
+
+            return [
+                'menu_item_id' => $menuItem->id,
+                'name' => $menuItem->name,
+                'category_id' => $menuItem->category_id,
+                'category_name' => $menuItem->category?->name,
+                'quantity' => (int) $item['quantity'],
+                'unit_price' => (float) $menuItem->price,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->promotionEngine->calculate($cartLines),
+        ]);
     }
 
     private function sendOrderPlacedEmail(Order $order): void

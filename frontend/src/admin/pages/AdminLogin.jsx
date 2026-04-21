@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
+import { clearCustomerSession } from "../../utils/authStorage";
 
 /**
  * Admin Login Component
@@ -75,6 +76,7 @@ const AdminLogin = () => {
         throw new Error("Invalid server response: missing token. Check backend logs or inspect response.");
       }
 
+      clearCustomerSession();
       localStorage.setItem("admin_token", data.token);
       localStorage.setItem("admin_user", JSON.stringify(data.user || {}));
       

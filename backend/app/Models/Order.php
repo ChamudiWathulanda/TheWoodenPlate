@@ -10,6 +10,7 @@ class Order extends Model
 {
     protected $fillable = [
         'customer_id',
+        'promotion_id',
         'order_number',
         'customer_name',
         'customer_phone',
@@ -18,6 +19,7 @@ class Order extends Model
         'delivery_address',
         'subtotal',
         'discount',
+        'discount_amount',
         'total',
         'total_amount',
         'status',
@@ -27,6 +29,7 @@ class Order extends Model
         'payment_status',
         'payment_method',
         'payment_receipt_path',
+        'applied_promotions',
     ];
 
     protected $casts = [
@@ -34,7 +37,9 @@ class Order extends Model
         'total_amount' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'discount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'total' => 'decimal:2',
+        'applied_promotions' => 'array',
     ];
 
     /**

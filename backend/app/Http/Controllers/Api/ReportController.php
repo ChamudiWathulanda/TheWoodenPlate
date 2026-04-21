@@ -41,7 +41,7 @@ class ReportController extends Controller
         // Total Discount (from promotions)
         $totalDiscount = Order::whereBetween('created_at', [$startDate, $endDate])
             ->whereNotNull('promotion_id')
-            ->sum('discount_amount');
+            ->sum('discount');
 
         // New Customers
         $newCustomers = Customer::whereBetween('created_at', [$startDate, $endDate])->count();
@@ -76,7 +76,7 @@ class ReportController extends Controller
                 DB::raw("DATE_FORMAT(created_at, '{$dateFormat}') as period"),
                 DB::raw('COUNT(*) as orders_count'),
                 DB::raw('SUM(total_amount) as revenue'),
-                DB::raw('COALESCE(SUM(discount_amount), 0) as discount'),
+                DB::raw('COALESCE(SUM(discount), 0) as discount'),
                 DB::raw('AVG(total_amount) as avg_order_value')
             )
             ->groupBy('period')
@@ -195,7 +195,7 @@ class ReportController extends Controller
         // Total discount given
         $totalDiscount = Order::whereBetween('created_at', [$startDate, $endDate])
             ->whereNotNull('promotion_id')
-            ->sum('discount_amount');
+            ->sum('discount');
 
         // Total promo usage
         $totalUsage = Order::whereBetween('created_at', [$startDate, $endDate])
@@ -217,13 +217,12 @@ class ReportController extends Controller
             ->select(
                 'promotions.id',
                 'promotions.title',
-                'promotions.code',
                 'promotions.is_active',
                 DB::raw('COUNT(*) as usage_count'),
-                DB::raw('SUM(orders.discount_amount) as total_discount'),
+                DB::raw('SUM(orders.discount) as total_discount'),
                 DB::raw('SUM(orders.total_amount) as revenue_generated')
             )
-            ->groupBy('promotions.id', 'promotions.title', 'promotions.code', 'promotions.is_active')
+            ->groupBy('promotions.id', 'promotions.title', 'promotions.is_active')
             ->orderByDesc('usage_count')
             ->get();
 

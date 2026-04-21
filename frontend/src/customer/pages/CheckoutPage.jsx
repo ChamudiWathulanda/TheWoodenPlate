@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import CustomerLayout from '../layout/customerLayout';
 import { useCart } from '../context/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
+import CustomerAuthModal from '../components/CustomerAuthModal';
 import toast from 'react-hot-toast';
 
 const PHONE_REGEX = /^(?:\+94|0)\d{9}$/;
@@ -16,16 +17,11 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const { items, total, clearCart } = useCart();
   const { customer, token, loading: authLoading, isAuthenticated } = useCustomerAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated()) {
-      navigate('/login', {
-        replace: true,
-        state: {
-          authMessage: 'Please register or log in to continue with checkout.',
-          redirectTo: '/checkout',
-        },
-      });
+      setShowAuthModal(true);
     }
   }, [authLoading, isAuthenticated, navigate]);
 
@@ -52,6 +48,15 @@ const CheckoutPage = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [pricingPreview, setPricingPreview] = useState({
+    subtotal: total,
+    discount: 0,
+    total,
+    applied_promotions: [],
+    line_items: [],
+  });
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingError, setPricingError] = useState('');
 
   useEffect(() => {
     if (!customer) {
@@ -66,6 +71,81 @@ const CheckoutPage = () => {
       delivery_address: prev.delivery_address || customer.address || '',
     }));
   }, [customer]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPricingPreview = async () => {
+      if (items.length === 0) {
+        setPricingPreview({
+          subtotal: 0,
+          discount: 0,
+          total: 0,
+          applied_promotions: [],
+          line_items: [],
+        });
+        setPricingError('');
+        return;
+      }
+
+      setPricingLoading(true);
+      try {
+        const response = await axios.post(
+          '/api/public/order-preview',
+          {
+            items: items.map((item) => ({
+              menu_item_id: item.id,
+              quantity: item.quantity,
+            })),
+          },
+          {
+            headers: {
+              Accept: 'application/json',
+            },
+          }
+        );
+
+        if (!cancelled) {
+          setPricingPreview(
+            response.data?.data || {
+              subtotal: total,
+              discount: 0,
+              total,
+              applied_promotions: [],
+              line_items: [],
+            }
+          );
+          setPricingError('');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPricingPreview({
+            subtotal: total,
+            discount: 0,
+            total,
+            applied_promotions: [],
+            line_items: [],
+          });
+          setPricingError(error.response?.data?.message || 'Unable to load active promotions right now.');
+        }
+      } finally {
+        if (!cancelled) {
+          setPricingLoading(false);
+        }
+      }
+    };
+
+    loadPricingPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items, total]);
+
+  const previewLineItems = useMemo(
+    () => new Map((pricingPreview.line_items || []).map((line) => [line.menu_item_id, line])),
+    [pricingPreview.line_items]
+  );
 
   const sanitizePhone = (value) => value.replace(/[^\d+]/g, '');
 
@@ -304,6 +384,9 @@ const CheckoutPage = () => {
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const subtotalAmount = Number(pricingPreview.subtotal ?? total);
+  const discountAmount = Number(pricingPreview.discount ?? 0);
+  const payableTotal = Number(pricingPreview.total ?? total);
 
   if (items.length === 0) {
     return (
@@ -347,7 +430,7 @@ const CheckoutPage = () => {
                 </div>
                 <div className="rounded-2xl border border-[#8B5A2B]/25 bg-[#0F0A08]/62 px-5 py-4">
                   <p className="text-xs uppercase tracking-[0.24em] text-[#E7D2B6]/45">Total</p>
-                  <p className="mt-2 text-2xl font-bold text-[#C98A5A]">Rs. {total.toLocaleString()}</p>
+                  <p className="mt-2 text-2xl font-bold text-[#C98A5A]">Rs. {payableTotal.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -367,30 +450,102 @@ const CheckoutPage = () => {
                 </div>
 
                 <div className="space-y-3">
-                  {items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 rounded-2xl border border-[#8B5A2B]/16 bg-[#0F0A08]/48 p-3"
-                    >
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="h-16 w-16 rounded-2xl object-cover"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-base font-semibold text-[#F6E7D0]">
-                          {item.name}
-                        </h3>
-                        <p className="mt-1 text-xs text-[#E7D2B6]/60">
-                          {item.quantity} × Rs. {item.price.toLocaleString()}
-                        </p>
+                  {items.map((item) => {
+                    const linePreview = previewLineItems.get(item.id);
+                    const baseLineTotal = item.price * item.quantity;
+                    const discountedLineTotal = Number(linePreview?.discounted_subtotal ?? baseLineTotal);
+                    const lineDiscount = Number(linePreview?.discount ?? 0);
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-2xl border border-[#8B5A2B]/16 bg-[#0F0A08]/48 p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="h-16 w-16 rounded-2xl object-cover"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <h3 className="truncate text-base font-semibold text-[#F6E7D0]">
+                              {item.name}
+                            </h3>
+                            <p className="mt-1 text-xs text-[#E7D2B6]/60">
+                              {item.quantity} x Rs. {item.price.toLocaleString()}
+                            </p>
+                            {linePreview?.applied_promotion && (
+                              <p className="mt-2 text-xs font-semibold text-emerald-300">
+                                {linePreview.applied_promotion.title} applied
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            {lineDiscount > 0 && (
+                              <p className="text-xs text-[#E7D2B6]/45 line-through">
+                                Rs. {baseLineTotal.toLocaleString()}
+                              </p>
+                            )}
+                            <p className="text-sm font-bold text-[#C98A5A]">
+                              Rs. {discountedLineTotal.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right text-sm font-bold text-[#C98A5A]">
-                        Rs. {(item.price * item.quantity).toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+
+                {(pricingPreview.applied_promotions?.length > 0 || pricingLoading || pricingError) && (
+                  <div className="mt-6 rounded-[1.5rem] border border-[#8B5A2B]/16 bg-[#0F0A08]/52 px-5 py-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold uppercase tracking-[0.24em] text-[#E7D2B6]/55">
+                        Active offers
+                      </span>
+                      {pricingLoading && (
+                        <span className="text-xs text-[#D7B38A]">Checking best promotions...</span>
+                      )}
+                    </div>
+
+                    {pricingError ? (
+                      <p className="mt-3 text-sm text-amber-300">{pricingError}</p>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        {(pricingPreview.applied_promotions || []).map((promotion) => (
+                          <div
+                            key={promotion.promotion_id}
+                            className="flex items-center justify-between rounded-2xl border border-emerald-500/15 bg-emerald-500/10 px-4 py-3"
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-[#F6E7D0]">{promotion.title}</p>
+                              <p className="text-xs text-[#E7D2B6]/58 capitalize">
+                                {promotion.application_type === 'order'
+                                  ? 'Order discount'
+                                  : promotion.application_type === 'item'
+                                    ? 'Item discount'
+                                    : 'Buy x get y'}
+                              </p>
+                            </div>
+                            <p className="text-sm font-bold text-emerald-300">
+                              - Rs. {Number(promotion.discount || 0).toLocaleString()}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!pricingLoading && !pricingError && (pricingPreview.applied_promotions?.length || 0) === 0 && (
+                  <div className="mt-6 rounded-[1.5rem] border border-[#8B5A2B]/16 bg-[#0F0A08]/52 px-5 py-4">
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#E7D2B6]/55">
+                      Promotions
+                    </p>
+                    <p className="mt-3 text-sm text-[#E7D2B6]/65">
+                      No active promotion matches this cart right now. Discounts apply only when the offer is active for the current date and the selected items match its rules.
+                    </p>
+                  </div>
+                )}
 
                 <div className="mt-6 grid grid-cols-2 gap-3">
                   <div className="rounded-2xl border border-[#8B5A2B]/16 bg-[#0F0A08]/48 px-4 py-4">
@@ -408,9 +563,19 @@ const CheckoutPage = () => {
                 </div>
 
                 <div className="mt-6 rounded-[1.5rem] border border-[#8B5A2B]/16 bg-[#0F0A08]/52 px-5 py-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold text-[#E7D2B6]">Total due</span>
-                    <span className="text-3xl font-bold text-[#C98A5A]">Rs. {total.toLocaleString()}</span>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm text-[#E7D2B6]/65">
+                      <span>Subtotal</span>
+                      <span>Rs. {subtotalAmount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-emerald-300">
+                      <span>Promotions</span>
+                      <span>- Rs. {discountAmount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-[#8B5A2B]/16 pt-3">
+                      <span className="text-lg font-semibold text-[#E7D2B6]">Total due</span>
+                      <span className="text-3xl font-bold text-[#C98A5A]">Rs. {payableTotal.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -734,8 +899,22 @@ const CheckoutPage = () => {
           </div>
         </div>
       </div>
+      <CustomerAuthModal
+        isOpen={showAuthModal && !isAuthenticated()}
+        onClose={() => {
+          setShowAuthModal(false);
+          navigate('/cart');
+        }}
+        onSuccess={() => {
+          setShowAuthModal(false);
+        }}
+        title="Continue to Checkout"
+        description="Log in or create an account to continue with your order."
+      />
     </CustomerLayout>
   );
 };
 
 export default CheckoutPage;
+
+

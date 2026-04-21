@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
-import { useCart } from '../customer/context/CartContext';
 import toast from 'react-hot-toast';
 
 // Food images for the side panel
@@ -12,7 +11,6 @@ const LoginPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { sendOTP, verifyOTP } = useCustomerAuth();
-    const { itemCount } = useCart();
     const [step, setStep] = useState(1); // 1: email, 2: OTP
     const [email, setEmail] = useState(location.state?.email || '');
     const [redirectTo] = useState(location.state?.redirectTo || null);
@@ -57,7 +55,7 @@ const LoginPage = () => {
 
         if (result.success) {
             toast.success('Login successful!');
-            navigate(redirectTo || (itemCount > 0 ? '/cart' : '/my-orders'));
+            navigate(redirectTo || '/', { replace: true });
         } else {
             setError(result.message);
             toast.error(result.message);

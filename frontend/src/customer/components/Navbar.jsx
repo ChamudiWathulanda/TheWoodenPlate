@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCustomerAuth } from "../../contexts/CustomerAuthContext";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
+import { clearAdminSession } from "../../utils/authStorage";
 
 const navLinks = [
   { name: "Home", id: "home", path: "/" },
@@ -50,6 +51,12 @@ const Navbar = () => {
   const handleLogout = async () => {
     await logout();
     setIsMenuOpen(false);
+  };
+
+  const handleCustomerAuthNavigation = (path) => {
+    clearAdminSession();
+    setIsMenuOpen(false);
+    navigate(path);
   };
 
   return (
@@ -244,18 +251,20 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <Link
-                to="/login"
+              <button
+                type="button"
+                onClick={() => handleCustomerAuthNavigation('/login')}
                 className="rounded-full border border-[#D7B38A]/50 px-4 py-2 text-[#E7D2B6] transition hover:bg-[#D7B38A]/10"
               >
                 Login
-              </Link>
-              <Link
-                to="/register"
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCustomerAuthNavigation('/register')}
                 className="rounded-full bg-[#D7B38A] px-4 py-2 text-[#1A120F] transition hover:opacity-90"
               >
                 Register
-              </Link>
+              </button>
             </>
           )}
         </div>
@@ -337,18 +346,20 @@ const Navbar = () => {
           </>
         ) : (
           <>
-            <Link
-              to="/login"
+            <button
+              type="button"
+              onClick={() => handleCustomerAuthNavigation('/login')}
               className="rounded-full border border-[#D7B38A] px-6 py-2 transition hover:bg-[#D7B38A]/10"
             >
               Login
-            </Link>
-            <Link
-              to="/register"
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCustomerAuthNavigation('/register')}
               className="rounded-full bg-[#D7B38A] px-6 py-2 text-[#1A120F] transition hover:opacity-90"
             >
               Register
-            </Link>
+            </button>
           </>
         )}
       </div>

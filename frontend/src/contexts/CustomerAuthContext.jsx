@@ -1,5 +1,10 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
+import {
+    clearAdminSession,
+    CUSTOMER_TOKEN_KEY,
+    CUSTOMER_USER_KEY,
+} from '../utils/authStorage';
 
 // Set base URL for all axios requests
 axios.defaults.baseURL = '';
@@ -21,8 +26,8 @@ export const CustomerAuthProvider = ({ children }) => {
 
     useEffect(() => {
         const initializeAuth = async () => {
-            const storedToken = localStorage.getItem('customerToken');
-            const storedCustomer = localStorage.getItem('customer');
+            const storedToken = localStorage.getItem(CUSTOMER_TOKEN_KEY);
+            const storedCustomer = localStorage.getItem(CUSTOMER_USER_KEY);
 
             if (!storedToken) {
                 setLoading(false);
@@ -43,8 +48,8 @@ export const CustomerAuthProvider = ({ children }) => {
                 }
             } catch (error) {
                 console.error('Failed to restore customer session:', error);
-                localStorage.removeItem('customerToken');
-                localStorage.removeItem('customer');
+                localStorage.removeItem(CUSTOMER_TOKEN_KEY);
+                localStorage.removeItem(CUSTOMER_USER_KEY);
                 delete axios.defaults.headers.common['Authorization'];
                 setToken(null);
                 setCustomer(null);
@@ -75,10 +80,11 @@ export const CustomerAuthProvider = ({ children }) => {
             const response = await axios.post('/api/public/login', { email });
             const { customer: loggedInCustomer, token: newToken } = response.data;
 
+            clearAdminSession();
             setCustomer(loggedInCustomer);
             setToken(newToken);
-            localStorage.setItem('customerToken', newToken);
-            localStorage.setItem('customer', JSON.stringify(loggedInCustomer));
+            localStorage.setItem(CUSTOMER_TOKEN_KEY, newToken);
+            localStorage.setItem(CUSTOMER_USER_KEY, JSON.stringify(loggedInCustomer));
             axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
 
             return { success: true, data: response.data };
@@ -120,10 +126,11 @@ export const CustomerAuthProvider = ({ children }) => {
             const response = await axios.post('/api/public/verify-otp', { email, otp });
             const { customer: loggedInCustomer, token: newToken } = response.data;
 
+            clearAdminSession();
             setCustomer(loggedInCustomer);
             setToken(newToken);
-            localStorage.setItem('customerToken', newToken);
-            localStorage.setItem('customer', JSON.stringify(loggedInCustomer));
+            localStorage.setItem(CUSTOMER_TOKEN_KEY, newToken);
+            localStorage.setItem(CUSTOMER_USER_KEY, JSON.stringify(loggedInCustomer));
             axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
 
             return { success: true, data: response.data };
@@ -146,8 +153,8 @@ export const CustomerAuthProvider = ({ children }) => {
         } finally {
             setCustomer(null);
             setToken(null);
-            localStorage.removeItem('customerToken');
-            localStorage.removeItem('customer');
+            localStorage.removeItem(CUSTOMER_TOKEN_KEY);
+            localStorage.removeItem(CUSTOMER_USER_KEY);
             delete axios.defaults.headers.common['Authorization'];
         }
     };

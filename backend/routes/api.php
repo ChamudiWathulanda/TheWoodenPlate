@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\IngredientController;
 use App\Http\Controllers\Api\StockMovementController;
 use App\Http\Controllers\Api\InventoryReportController;
+use App\Http\Controllers\Api\AdminNotificationController;
 use App\Http\Controllers\Api\PublicMenuController;
 use App\Http\Controllers\Api\PublicOrderController;
 use App\Http\Controllers\Api\GalleryController;
@@ -41,6 +42,7 @@ Route::prefix('public')->group(function () {
 
     // Orders (Guest Checkout)
     Route::post('orders', [PublicOrderController::class, 'store']);
+    Route::post('order-preview', [PublicOrderController::class, 'preview']);
     Route::get('orders/{orderNumber}', [PublicOrderController::class, 'track']);
 
     // Gallery (Public - active images only)
@@ -57,7 +59,7 @@ Route::prefix('public')->group(function () {
 // ============================================
 // PROTECTED CUSTOMER ROUTES (Auth Required)
 // ============================================
-Route::middleware('auth:sanctum')->prefix('customer')->group(function () {
+Route::middleware(['auth:sanctum', 'customer.only'])->prefix('customer')->group(function () {
     Route::post('logout', [CustomerAuthController::class, 'logout']);
     Route::get('me', [CustomerAuthController::class, 'me']);
 
@@ -74,7 +76,7 @@ Route::middleware('auth:sanctum')->prefix('customer')->group(function () {
 Route::prefix('admin')->group(function () {
     Route::post('login', [AdminAuthAPIController::class, 'login'])->name('admin.login');
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'admin.only'])->group(function () {
         Route::post('logout', [AdminAuthAPIController::class, 'logout'])->name('admin.logout');
         Route::get('profile', [AdminAuthAPIController::class, 'profile'])->name('admin.profile');
         Route::put('profile', [AdminAuthAPIController::class, 'updateProfile'])->name('admin.updateProfile');
@@ -83,6 +85,7 @@ Route::prefix('admin')->group(function () {
         Route::get('dashboard', function () {
             return response()->json(['message' => 'Welcome to Admin Dashboard']);
         })->name('admin.dashboard');
+        Route::get('notifications', [AdminNotificationController::class, 'index'])->name('admin.notifications');
 
         // Customer Management (Admin CRUD)
         Route::apiResource('customers', CustomerController::class);
@@ -136,7 +139,7 @@ Route::prefix('admin')->group(function () {
 });
 
 // Customer Order Routes (protected by auth)
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'customer.only'])->group(function () {
     // Customer Orders
     Route::prefix('orders')->group(function () {
         Route::get('/', [OrderController::class, 'customerIndex'])->name('customer.orders.index');
@@ -159,7 +162,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Inventory Management Routes (Admin)
-Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum', 'admin.only'])->prefix('admin')->group(function () {
     // Ingredients CRUD
     Route::apiResource('ingredients', IngredientController::class);
     Route::get('ingredients-low-stock', [IngredientController::class, 'lowStock'])->name('ingredients.low-stock');

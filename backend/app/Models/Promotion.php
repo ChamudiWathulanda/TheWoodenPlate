@@ -10,6 +10,12 @@ class Promotion extends Model
         'title',
         'type',
         'value',
+        'application_type',
+        'target_type',
+        'target_ids',
+        'applicable_days',
+        'buy_quantity',
+        'get_quantity',
         'starts_at',
         'ends_at',
         'is_active',
@@ -20,5 +26,7 @@ class Promotion extends Model
         'is_active' => 'boolean',
         'starts_at' => 'datetime',
         'ends_at'   => 'datetime',
+        'target_ids' => 'array',
+        'applicable_days' => 'array',
     ];
 }

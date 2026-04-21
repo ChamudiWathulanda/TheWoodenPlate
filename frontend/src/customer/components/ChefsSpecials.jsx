@@ -3,7 +3,9 @@ import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
+import { useCustomerAuth } from "../../contexts/CustomerAuthContext";
 import WishlistButton from "./WishlistButton";
+import CustomerAuthModal from "./CustomerAuthModal";
 
 const ChefsSpecials = () => {
   const navigate = useNavigate();
@@ -11,6 +13,9 @@ const ChefsSpecials = () => {
   const [loading, setLoading] = useState(true);
   const { addItem } = useCart();
   const { isInWishlist, toggleItem } = useWishlist();
+  const { isAuthenticated } = useCustomerAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingWishlistItem, setPendingWishlistItem] = useState(null);
 
   useEffect(() => {
     const fetchSpecials = async () => {
@@ -37,6 +42,17 @@ const ChefsSpecials = () => {
 
     fetchSpecials();
   }, []);
+
+  const handleWishlistToggle = (item) => {
+    if (!isAuthenticated()) {
+      setPendingWishlistItem(item);
+      setShowAuthModal(true);
+      return;
+    }
+
+    const added = toggleItem(item);
+    toast.success(added ? "Added to wishlist" : "Removed from wishlist");
+  };
 
   return (
     <section id="specials" className="py-20 bg-[#0F0A08] text-[#E7D2B6]">
@@ -67,8 +83,7 @@ const ChefsSpecials = () => {
                     active={isInWishlist(item.id)}
                     onClick={(event) => {
                       event.stopPropagation();
-                      const added = toggleItem(item);
-                      toast.success(added ? "Added to wishlist" : "Removed from wishlist");
+                      handleWishlistToggle(item);
                     }}
                     className="absolute top-4 right-4 w-10 h-10 bg-black/40 border-[#8B5A2B]/60 hover:bg-black/55"
                   />
@@ -100,6 +115,24 @@ const ChefsSpecials = () => {
         )}
 
         <div className="mt-16 border-t border-[#8B5A2B]/30" />
+
+        <CustomerAuthModal
+          isOpen={showAuthModal}
+          onClose={() => {
+            setShowAuthModal(false);
+            setPendingWishlistItem(null);
+          }}
+          onSuccess={() => {
+            if (pendingWishlistItem) {
+              const added = toggleItem(pendingWishlistItem);
+              toast.success(added ? "Added to wishlist" : "Removed from wishlist");
+            }
+            setShowAuthModal(false);
+            setPendingWishlistItem(null);
+          }}
+          title="Save Chef Specials"
+          description="Log in or create an account to save this dish to your wishlist."
+        />
       </div>
     </section>
   );

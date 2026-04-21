@@ -2,12 +2,25 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomerLayout from '../layout/customerLayout';
 import { useCart } from '../context/CartContext';
+import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
+import CustomerAuthModal from '../components/CustomerAuthModal';
 
 const CartPage = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useCustomerAuth();
   const { items, total, removeItem, updateQuantity, clearCart } = useCart();
+  const [showAuthModal, setShowAuthModal] = React.useState(false);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const estimatedReady = totalItems > 6 ? '25-35 mins' : '15-25 mins';
+
+  const handleProceedToCheckout = () => {
+    if (isAuthenticated()) {
+      navigate('/checkout');
+      return;
+    }
+
+    setShowAuthModal(true);
+  };
 
   if (items.length === 0) {
     return (
@@ -183,7 +196,7 @@ const CartPage = () => {
 
                 <div className="space-y-3">
                   <button
-                    onClick={() => navigate('/checkout')}
+                    onClick={handleProceedToCheckout}
                     className="w-full rounded-2xl bg-gradient-to-r from-[#C98A5A] to-[#D4A574] py-4 text-lg font-bold text-[#0F0A08] shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:from-[#B07D4A] hover:to-[#C49A66]"
                   >
                     <span className="mr-2">💳</span>
@@ -211,6 +224,16 @@ const CartPage = () => {
           </div>
         </div>
       </div>
+      <CustomerAuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          navigate('/checkout');
+        }}
+        title="Continue to Checkout"
+        description="Log in or create an account to place your order without leaving this page."
+      />
     </CustomerLayout>
   );
 };
