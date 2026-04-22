@@ -13,6 +13,11 @@ const rangeOptions = [
 
 const quickActions = [
   {
+    title: "Review Messages",
+    description: "Read customer inquiries and send email replies.",
+    href: "/admin/contact-messages",
+  },
+  {
     title: "Review Orders",
     description: "Check incoming orders and update kitchen progress.",
     href: "/admin/orders",
@@ -286,7 +291,7 @@ const AdminDashboard = () => {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
               <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
                 <p className="text-sm text-slate-300">Pending attention</p>
-                <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-3">
                   <div className="rounded-2xl bg-white/10 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-300">Orders</p>
                     <p className="mt-2 text-2xl font-bold">
@@ -297,6 +302,12 @@ const AdminDashboard = () => {
                     <p className="text-xs uppercase tracking-wide text-slate-300">Bookings</p>
                     <p className="mt-2 text-2xl font-bold">
                       {formatNumber(dashboard.notificationCounts?.reservations)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 p-4">
+                    <p className="text-xs uppercase tracking-wide text-slate-300">Messages</p>
+                    <p className="mt-2 text-2xl font-bold">
+                      {formatNumber(dashboard.notificationCounts?.messages)}
                     </p>
                   </div>
                   <div className="rounded-2xl bg-white/10 p-4">
@@ -638,10 +649,10 @@ const AdminDashboard = () => {
                   <h2 className="mt-2 text-2xl font-bold text-slate-900">Recent alerts</h2>
                 </div>
                 <Link
-                  to="/admin/orders"
+                  to="/admin/contact-messages"
                   className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
                 >
-                  Review queue
+                  Open messages
                 </Link>
               </div>
 

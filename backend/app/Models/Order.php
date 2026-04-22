@@ -50,6 +50,11 @@ class Order extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function promotion(): BelongsTo
+    {
+        return $this->belongsTo(Promotion::class);
+    }
+
     /**
      * Get the order items
      */

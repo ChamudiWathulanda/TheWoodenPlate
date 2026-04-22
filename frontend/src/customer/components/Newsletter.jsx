@@ -1,21 +1,44 @@
 import React, { useState } from "react";
+import toast from "react-hot-toast";
+
+const API_BASE = "http://localhost:8000";
 
 const Newsletter = () => {
   const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!email.trim()) {
-      alert("Please enter your email");
+      toast.error("Please enter your email");
       return;
     }
 
-    // Later: API call -> POST /api/newsletter
-    console.log("Newsletter email:", email);
+    try {
+      setSubmitting(true);
 
-    alert("Subscribed successfully! (Later we will connect API)");
-    setEmail("");
+      const response = await fetch(`${API_BASE}/api/public/newsletter/subscribe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message || "Failed to subscribe");
+      }
+
+      toast.success(result?.message || "Subscribed successfully");
+      setEmail("");
+    } catch (error) {
+      toast.error(error.message || "Failed to subscribe");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -56,6 +79,7 @@ const Newsletter = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={submitting}
                   placeholder="Enter your email address"
                   className="flex-1 rounded-full border border-[#8B5A2B]/45 bg-black/25 px-5 py-3
                              text-[#E7D2B6] placeholder:text-[#BFA58A]/60
@@ -64,10 +88,11 @@ const Newsletter = () => {
 
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="px-7 py-3 rounded-full bg-[#C98A5A] text-[#0F0A08] font-semibold
-                             hover:brightness-110 transition"
+                             hover:brightness-110 transition disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  Subscribe
+                  {submitting ? "Subscribing..." : "Subscribe"}
                 </button>
               </div>
 

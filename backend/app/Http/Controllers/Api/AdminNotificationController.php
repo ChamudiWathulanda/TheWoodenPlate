@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ContactMessage;
 use App\Models\Customer;
 use App\Models\Ingredient;
+use App\Models\NewsletterSubscriber;
 use App\Models\Order;
 use App\Models\Promotion;
 use App\Models\Reservation;
@@ -23,6 +25,8 @@ class AdminNotificationController extends Controller
             ->merge($this->recentOrderNotifications())
             ->merge($this->recentCustomerNotifications())
             ->merge($this->recentReservationNotifications())
+            ->merge($this->recentContactMessageNotifications())
+            ->merge($this->recentNewsletterNotifications())
             ->merge($this->expiredPromotionNotifications($cutoff))
             ->merge($this->lowStockNotifications());
 
@@ -40,6 +44,8 @@ class AdminNotificationController extends Controller
                 'counts' => [
                     'orders' => Order::where('status', 'pending')->count(),
                     'reservations' => Reservation::where('status', 'pending')->count(),
+                    'messages' => ContactMessage::whereNull('replied_at')->count(),
+                    'newsletter' => NewsletterSubscriber::where('is_active', true)->count(),
                     'low_stock' => Ingredient::active()->lowStock()->count(),
                     'expired_promotions' => Promotion::whereNotNull('ends_at')
                         ->where('ends_at', '<=', $now)
@@ -121,6 +127,54 @@ class AdminNotificationController extends Controller
                     ),
                     'link' => '/admin/reservations',
                     'created_at' => optional($reservation->created_at)->toIso8601String(),
+                ];
+            });
+    }
+
+    private function recentContactMessageNotifications(): Collection
+    {
+        return ContactMessage::query()
+            ->latest()
+            ->take(6)
+            ->get()
+            ->map(function (ContactMessage $contactMessage) {
+                $isPendingReply = !$contactMessage->replied_at;
+
+                return [
+                    'id' => 'contact-message-' . $contactMessage->id,
+                    'type' => 'contact_message',
+                    'severity' => $isPendingReply ? 'warning' : 'info',
+                    'title' => $isPendingReply ? 'New contact message' : 'Contact message replied',
+                    'message' => sprintf(
+                        '%s sent a message from %s.',
+                        $contactMessage->name,
+                        $contactMessage->email
+                    ),
+                    'link' => '/admin/contact-messages/' . $contactMessage->id,
+                    'created_at' => optional($contactMessage->created_at)->toIso8601String(),
+                ];
+            });
+    }
+
+    private function recentNewsletterNotifications(): Collection
+    {
+        return NewsletterSubscriber::query()
+            ->latest()
+            ->take(6)
+            ->get()
+            ->map(function (NewsletterSubscriber $subscriber) {
+                return [
+                    'id' => 'newsletter-subscriber-' . $subscriber->id,
+                    'type' => 'newsletter_subscriber',
+                    'severity' => $subscriber->is_active ? 'success' : 'info',
+                    'title' => $subscriber->is_active ? 'New newsletter subscriber' : 'Newsletter subscriber updated',
+                    'message' => sprintf(
+                        '%s %s the newsletter list.',
+                        $subscriber->email,
+                        $subscriber->is_active ? 'joined' : 'left'
+                    ),
+                    'link' => '/admin/newsletter',
+                    'created_at' => optional($subscriber->updated_at ?? $subscriber->created_at)->toIso8601String(),
                 ];
             });
     }

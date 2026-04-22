@@ -23,6 +23,8 @@ const PromotionList = () => {
   const [deleteModal, setDeleteModal] = useState({ open: false, id: null });
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const token = localStorage.getItem("admin_token");
 
@@ -138,14 +140,52 @@ const PromotionList = () => {
     return { label: "Live", className: "bg-emerald-100 text-emerald-800" };
   };
 
+  const filteredPromotions = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    return promotions.filter((promotion) => {
+      const scheduleStatus = getScheduleStatus(promotion).label.toLowerCase();
+      const targetSummary = getTargetSummary(promotion, categories, menuItems).toLowerCase();
+      const matchesSearch =
+        query === "" ||
+        [
+          promotion.title,
+          promotion.description,
+          promotion.application_type,
+          promotion.target_type,
+          getPromotionTypeLabel(promotion),
+          getPromotionValueLabel(promotion),
+          targetSummary,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query));
+
+      const matchesStatus =
+        statusFilter === "all" || scheduleStatus === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [categories, menuItems, promotions, searchTerm, statusFilter]);
+
   const totalPages = useMemo(
-    () => Math.ceil(promotions.length / itemsPerPage) || 1,
-    [promotions.length, itemsPerPage]
+    () => Math.ceil(filteredPromotions.length / itemsPerPage) || 1,
+    [filteredPromotions.length, itemsPerPage]
   );
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedPromotions = promotions.slice(startIndex, endIndex);
+  const paginatedPromotions = filteredPromotions.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  const filterChips = [
+    { value: "all", label: "All" },
+    { value: "live", label: "Live" },
+    { value: "upcoming", label: "Upcoming" },
+    { value: "disabled", label: "Disabled" },
+  ];
 
   return (
     <AdminLayout>
@@ -168,26 +208,70 @@ const PromotionList = () => {
           </div>
 
           <div className="overflow-visible rounded-xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-4">
-              <p className="text-sm font-medium text-gray-900">
-                Promotion List <span className="font-normal text-gray-400">({promotions.length})</span>
-              </p>
+            <div className="border-b border-gray-200 px-5 py-4">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    Promotion List <span className="font-normal text-gray-400">({filteredPromotions.length})</span>
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Search by title, target, offer type, or rule details.
+                  </p>
+                </div>
 
-              {promotions.length > 0 && (
-                <select
-                  value={itemsPerPage}
-                  onChange={(event) => {
-                    setItemsPerPage(Number(event.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value={10}>10 per page</option>
-                  <option value={25}>25 per page</option>
-                  <option value={50}>50 per page</option>
-                  <option value={100}>100 per page</option>
-                </select>
-              )}
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                      placeholder="Search promotions..."
+                      className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 lg:w-80"
+                    />
+                    <svg
+                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+
+                  {filteredPromotions.length > 0 && (
+                    <select
+                      value={itemsPerPage}
+                      onChange={(event) => {
+                        setItemsPerPage(Number(event.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value={10}>10 per page</option>
+                      <option value={25}>25 per page</option>
+                      <option value={50}>50 per page</option>
+                      <option value={100}>100 per page</option>
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {filterChips.map((chip) => (
+                  <button
+                    key={chip.value}
+                    type="button"
+                    onClick={() => setStatusFilter(chip.value)}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                      statusFilter === chip.value
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "border border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:text-blue-700"
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {loading ? (
@@ -211,17 +295,35 @@ const PromotionList = () => {
                   </thead>
 
                   <tbody className="text-sm text-gray-700">
-                    {promotions.length === 0 ? (
+                    {filteredPromotions.length === 0 ? (
                       <tr>
                         <td colSpan={10} className="border-t border-gray-200 px-5 py-12 text-center">
-                          <p className="font-semibold text-gray-900">No promotions found</p>
-                          <p className="mt-1 text-sm text-gray-500">Create your first promotion to see it here.</p>
-                          <button
-                            onClick={() => navigate("/admin/promotions/create")}
-                            className="mt-4 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
-                          >
-                            + Create Promotion
-                          </button>
+                          <p className="font-semibold text-gray-900">
+                            {promotions.length === 0 ? "No promotions found" : "No promotions match your filters"}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-500">
+                            {promotions.length === 0
+                              ? "Create your first promotion to see it here."
+                              : "Try a different keyword or switch the filter chip."}
+                          </p>
+                          {promotions.length === 0 ? (
+                            <button
+                              onClick={() => navigate("/admin/promotions/create")}
+                              className="mt-4 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+                            >
+                              + Create Promotion
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSearchTerm("");
+                                setStatusFilter("all");
+                              }}
+                              className="mt-4 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                            >
+                              Clear Filters
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ) : (
@@ -335,19 +437,20 @@ const PromotionList = () => {
                             </div>
                           </td>
                         </tr>
-                      )})
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
               </div>
             )}
 
-            {!loading && promotions.length > 0 && (
+            {!loading && filteredPromotions.length > 0 && (
               <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-200 px-5 py-4 sm:flex-row">
                 <p className="text-sm text-gray-600">
                   Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to{" "}
-                  <span className="font-semibold text-gray-900">{Math.min(endIndex, promotions.length)}</span> of{" "}
-                  <span className="font-semibold text-gray-900">{promotions.length}</span> results
+                  <span className="font-semibold text-gray-900">{Math.min(endIndex, filteredPromotions.length)}</span> of{" "}
+                  <span className="font-semibold text-gray-900">{filteredPromotions.length}</span> results
                 </p>
 
                 <div className="flex items-center gap-2">

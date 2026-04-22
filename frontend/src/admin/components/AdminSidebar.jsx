@@ -39,6 +39,7 @@ const AdminSidebar = ({ mobile = false, onNavigate }) => {
         </svg>
       ),
     },
+    
     {
       name: "Orders",
       path: "/admin/orders",
@@ -139,6 +140,65 @@ const AdminSidebar = ({ mobile = false, onNavigate }) => {
         </svg>
       ),
     },
+
+    {
+      name: "Messages",
+      path: "/admin/contact-messages",
+      description: "Customer inbox",
+      icon: (
+        <svg className="h-5 w-5 stroke-current" fill="none" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.8}
+            d="M3 8l7.89 4.26a2.25 2.25 0 002.22 0L21 8m-16.5 9h15A1.5 1.5 0 0021 15.5v-7A1.5 1.5 0 0019.5 7h-15A1.5 1.5 0 003 8.5v7A1.5 1.5 0 004.5 17z"
+          />
+        </svg>
+      ),
+    },
+    {
+      name: "Newsletter",
+      path: "/admin/newsletter",
+      description: "Subscribers",
+      icon: (
+        <svg className="h-5 w-5 stroke-current" fill="none" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.8}
+            d="M4 6.75A2.75 2.75 0 016.75 4h10.5A2.75 2.75 0 0120 6.75v10.5A2.75 2.75 0 0117.25 20H6.75A2.75 2.75 0 014 17.25V6.75z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.8}
+            d="M7 8l5 4 5-4M7 16h10"
+          />
+        </svg>
+      ),
+    },
+    {
+      name: "Campaigns",
+      path: "/admin/email-campaigns",
+      description: "Bulk email",
+      icon: (
+        <svg className="h-5 w-5 stroke-current" fill="none" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.8}
+            d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5v9A2.5 2.5 0 0117.5 19h-11A2.5 2.5 0 014 16.5v-9z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.8}
+            d="M7 9.5h10M7 13h6"
+          />
+        </svg>
+      ),
+    },
+
     {
       name: "Gallery",
       path: "/admin/gallery",

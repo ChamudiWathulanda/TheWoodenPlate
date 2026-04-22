@@ -14,6 +14,7 @@ class PromotionEngine
             ->map(function (array $line) {
                 $quantity = max(0, (int) ($line['quantity'] ?? 0));
                 $unitPrice = round((float) ($line['unit_price'] ?? 0), 2);
+                $paidSubtotal = round($quantity * $unitPrice, 2);
 
                 return [
                     'menu_item_id' => (int) ($line['menu_item_id'] ?? 0),
@@ -21,14 +22,15 @@ class PromotionEngine
                     'category_id' => $line['category_id'] ?? null,
                     'category_name' => $line['category_name'] ?? null,
                     'quantity' => $quantity,
+                    'paid_quantity' => $quantity,
                     'unit_price' => $unitPrice,
-                    'line_subtotal' => round($quantity * $unitPrice, 2),
+                    'paid_subtotal' => $paidSubtotal,
+                    'line_subtotal' => $paidSubtotal,
                 ];
             })
             ->filter(fn (array $line) => $line['menu_item_id'] > 0 && $line['quantity'] > 0)
             ->values();
 
-        $subtotal = round($lines->sum('line_subtotal'), 2);
         if ($lines->isEmpty()) {
             return [
                 'subtotal' => 0,
@@ -54,24 +56,48 @@ class PromotionEngine
             $best = null;
 
             foreach ($eligibleItemPromotions as $promotion) {
-                $discount = $this->calculateDiscountAmount($promotion, $line['line_subtotal']);
-                $best = $this->chooseBetterPromotion($best, $promotion, $discount, $line['line_subtotal']);
+                $discount = $this->calculateDiscountAmount($promotion, $line['paid_subtotal']);
+                $best = $this->chooseBetterPromotion($best, $promotion, $discount, $line['paid_subtotal']);
             }
 
             foreach ($eligibleBxgyPromotions as $promotion) {
-                $discount = $this->calculateBxgyDiscount($promotion, $line);
-                $best = $this->chooseBetterPromotion($best, $promotion, $discount, $line['line_subtotal']);
+                $benefit = $this->calculateBxgyBenefit($promotion, $line);
+                $best = $this->chooseBetterPromotion(
+                    $best,
+                    $promotion,
+                    $benefit['discount'],
+                    $line['paid_subtotal'] + $benefit['discount'],
+                    [
+                        'bonus_quantity' => $benefit['bonus_quantity'],
+                    ]
+                );
             }
 
             $discount = $best['discount'] ?? 0;
+            $bonusQuantity = (int) ($best['bonus_quantity'] ?? 0);
+            $isBxgyPromotion = ($best['promotion']->application_type ?? null) === 'bxgy';
+            $totalQuantity = $line['paid_quantity'] + $bonusQuantity;
+            $lineSubtotal = $isBxgyPromotion
+                ? round($line['paid_subtotal'] + $discount, 2)
+                : $line['paid_subtotal'];
+            $discountedSubtotal = $isBxgyPromotion
+                ? $line['paid_subtotal']
+                : round(max(0, $lineSubtotal - $discount), 2);
 
             return [
                 ...$line,
+                'bonus_quantity' => $bonusQuantity,
+                'total_quantity' => $totalQuantity,
+                'line_subtotal' => $lineSubtotal,
                 'discount' => $discount,
-                'discounted_subtotal' => round(max(0, $line['line_subtotal'] - $discount), 2),
-                'applied_promotion' => $best ? $this->formatAppliedPromotion($best['promotion'], $discount) : null,
+                'discounted_subtotal' => $discountedSubtotal,
+                'applied_promotion' => $best
+                    ? $this->formatAppliedPromotion($best['promotion'], $discount, ['bonus_quantity' => $bonusQuantity])
+                    : null,
             ];
         })->values();
+
+        $subtotal = round($lineResults->sum('line_subtotal'), 2);
 
         $orderPromotion = null;
         foreach ($promotions->where('application_type', 'order') as $promotion) {
@@ -113,6 +139,7 @@ class PromotionEngine
                 return [
                     ...$first,
                     'discount' => round($group->sum('discount'), 2),
+                    'bonus_quantity' => (int) $group->sum('bonus_quantity'),
                 ];
             })
             ->sortByDesc('discount')
@@ -188,23 +215,29 @@ class PromotionEngine
         return round(min($discount, $baseAmount), 2);
     }
 
-    private function calculateBxgyDiscount(Promotion $promotion, array $line): float
+    private function calculateBxgyBenefit(Promotion $promotion, array $line): array
     {
         $buyQuantity = max(1, (int) ($promotion->buy_quantity ?? 1));
         $getQuantity = max(1, (int) ($promotion->get_quantity ?? 1));
-        $groupSize = $buyQuantity + $getQuantity;
 
-        if ($groupSize <= 0 || $line['quantity'] < $groupSize) {
-            return 0;
+        if ($buyQuantity <= 0 || $line['paid_quantity'] < $buyQuantity) {
+            return [
+                'discount' => 0,
+                'bonus_quantity' => 0,
+            ];
         }
 
-        $eligibleGroups = intdiv($line['quantity'], $groupSize);
-        $freeItems = $eligibleGroups * $getQuantity;
+        $eligibleGroups = intdiv($line['paid_quantity'], $buyQuantity);
+        $bonusQuantity = $eligibleGroups * $getQuantity;
+        $discount = round($bonusQuantity * $line['unit_price'], 2);
 
-        return round(min($line['line_subtotal'], $freeItems * $line['unit_price']), 2);
+        return [
+            'discount' => $discount,
+            'bonus_quantity' => $bonusQuantity,
+        ];
     }
 
-    private function chooseBetterPromotion(?array $current, Promotion $promotion, float $discount, float $baseAmount): ?array
+    private function chooseBetterPromotion(?array $current, Promotion $promotion, float $discount, float $baseAmount, array $metadata = []): ?array
     {
         $discount = round(min($discount, $baseAmount), 2);
         if ($discount <= 0) {
@@ -215,6 +248,7 @@ class PromotionEngine
             return [
                 'promotion' => $promotion,
                 'discount' => $discount,
+                ...$metadata,
             ];
         }
 
@@ -234,7 +268,7 @@ class PromotionEngine
         return $current;
     }
 
-    private function formatAppliedPromotion(Promotion $promotion, float $discount): array
+    private function formatAppliedPromotion(Promotion $promotion, float $discount, array $metadata = []): array
     {
         return [
             'promotion_id' => $promotion->id,
@@ -242,6 +276,7 @@ class PromotionEngine
             'application_type' => $promotion->application_type,
             'target_type' => $promotion->target_type,
             'discount' => round($discount, 2),
+            'bonus_quantity' => (int) ($metadata['bonus_quantity'] ?? 0),
         ];
     }
 }

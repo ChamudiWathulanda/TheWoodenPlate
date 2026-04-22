@@ -3,10 +3,13 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AdminAuthAPIController;
 use App\Http\Controllers\Api\CustomerAPIController;
 use App\Http\Controllers\Api\DetailsAPIController;
+use App\Http\Controllers\Api\EmailCampaignController;
 use App\Http\Controllers\Api\ProductAPIController;
 use App\Http\Controllers\Api\PromotionAPIController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ContactMessageController;
 use App\Http\Controllers\Api\MenuItemController;
+use App\Http\Controllers\Api\NewsletterSubscriberController;
 use App\Http\Controllers\Api\TableController;
 use App\Http\Controllers\Api\ReservationController;
 use App\Http\Controllers\Api\ReportController;
@@ -54,6 +57,8 @@ Route::prefix('public')->group(function () {
 
     // Reservations (Public - with customer auth token)
     Route::post('reservations', [ReservationController::class, 'publicStore']);
+    Route::post('contact-messages', [ContactMessageController::class, 'store']);
+    Route::post('newsletter/subscribe', [NewsletterSubscriberController::class, 'subscribe']);
 });
 
 // ============================================
@@ -135,6 +140,20 @@ Route::prefix('admin')->group(function () {
         // Gallery Management
         Route::apiResource('gallery', GalleryController::class);
         Route::patch('gallery/{id}/toggle-active', [GalleryController::class, 'toggleActive'])->name('admin.gallery.toggleActive');
+
+        // Contact Messages
+        Route::get('contact-messages', [ContactMessageController::class, 'index'])->name('admin.contact-messages.index');
+        Route::get('contact-messages/{id}', [ContactMessageController::class, 'show'])->name('admin.contact-messages.show');
+        Route::post('contact-messages/{id}/reply', [ContactMessageController::class, 'reply'])->name('admin.contact-messages.reply');
+
+        // Newsletter Subscribers
+        Route::get('newsletter-subscribers', [NewsletterSubscriberController::class, 'index'])->name('admin.newsletter.index');
+        Route::patch('newsletter-subscribers/{id}/toggle-status', [NewsletterSubscriberController::class, 'toggleStatus'])->name('admin.newsletter.toggleStatus');
+
+        // Email Campaigns
+        Route::get('email-campaigns', [EmailCampaignController::class, 'index'])->name('admin.email-campaigns.index');
+        Route::post('email-campaigns', [EmailCampaignController::class, 'store'])->name('admin.email-campaigns.store');
+        Route::get('email-campaigns/{id}', [EmailCampaignController::class, 'show'])->name('admin.email-campaigns.show');
     });
 });
 

@@ -181,19 +181,38 @@ const MyOrdersPage = () => {
 
                     <div className="border-t border-[#8B5A2B]/22 pt-5">
                       <div className="space-y-2">
-                        {order.items && order.items.map((item, index) => (
-                          <div
-                            key={index}
-                            className="flex justify-between gap-3 rounded-2xl border border-[#8B5A2B]/16 bg-[#0F0A08]/45 px-4 py-3 text-sm"
-                          >
-                            <span className="text-[#E7D2B6]/72">
-                              {item.quantity}x {item.product?.name || item.name || 'Item'}
-                            </span>
-                            <span className="font-medium text-[#F6E7D0]">
-                              Rs. {(item.price * item.quantity).toFixed(2)}
-                            </span>
-                          </div>
-                        ))}
+                        {order.items && order.items.map((item, index) => {
+                          const quantity = Number(item.quantity ?? 0);
+                          const unitPrice = Number(item.price ?? 0);
+                          const lineSubtotal = Number(item.subtotal ?? unitPrice * quantity);
+                          const paidQuantityEstimate = unitPrice > 0 ? lineSubtotal / unitPrice : quantity;
+                          const roundedPaidQuantity = Math.round(paidQuantityEstimate);
+                          const hasWholePaidQuantity =
+                            unitPrice > 0 && Math.abs(paidQuantityEstimate - roundedPaidQuantity) < 0.001;
+                          const bonusQuantity =
+                            hasWholePaidQuantity && roundedPaidQuantity < quantity
+                              ? quantity - roundedPaidQuantity
+                              : 0;
+
+                          return (
+                            <div
+                              key={index}
+                              className="flex justify-between gap-3 rounded-2xl border border-[#8B5A2B]/16 bg-[#0F0A08]/45 px-4 py-3 text-sm"
+                            >
+                              <div className="text-[#E7D2B6]/72">
+                                <p>{quantity}x {item.product?.name || item.name || 'Item'}</p>
+                                {bonusQuantity > 0 && (
+                                  <p className="mt-1 text-xs font-semibold text-emerald-300">
+                                    Includes {bonusQuantity} free item{bonusQuantity > 1 ? 's' : ''}
+                                  </p>
+                                )}
+                              </div>
+                              <span className="font-medium text-[#F6E7D0]">
+                                Rs. {lineSubtotal.toFixed(2)}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
 
                       <div className="mt-5 flex items-center justify-between border-t border-[#8B5A2B]/22 pt-5">

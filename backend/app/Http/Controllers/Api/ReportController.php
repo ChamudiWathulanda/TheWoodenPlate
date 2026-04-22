@@ -10,16 +10,24 @@ use App\Models\Promotion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 
 class ReportController extends Controller
 {
+    private function resolveDateRange(Request $request): array
+    {
+        $startDate = Carbon::parse($request->input('start_date', now()->startOfMonth()->toDateString()))->startOfDay();
+        $endDate = Carbon::parse($request->input('end_date', now()->toDateString()))->endOfDay();
+
+        return [$startDate, $endDate];
+    }
+
     /**
      * Get dashboard KPIs
      */
     public function kpis(Request $request): JsonResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->toDateString());
+        [$startDate, $endDate] = $this->resolveDateRange($request);
 
         // Total Revenue
         $totalRevenue = Order::whereBetween('created_at', [$startDate, $endDate])
@@ -64,8 +72,7 @@ class ReportController extends Controller
      */
     public function salesSummary(Request $request): JsonResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->toDateString());
+        [$startDate, $endDate] = $this->resolveDateRange($request);
         $groupBy = $request->input('group_by', 'day'); // day or month
 
         $dateFormat = $groupBy === 'month' ? '%Y-%m' : '%Y-%m-%d';
@@ -94,8 +101,7 @@ class ReportController extends Controller
      */
     public function orderStatus(Request $request): JsonResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->toDateString());
+        [$startDate, $endDate] = $this->resolveDateRange($request);
 
         // Status counts
         $statusBreakdown = Order::whereBetween('created_at', [$startDate, $endDate])
@@ -137,8 +143,7 @@ class ReportController extends Controller
      */
     public function topProducts(Request $request): JsonResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->toDateString());
+        [$startDate, $endDate] = $this->resolveDateRange($request);
         $limit = $request->input('limit', 10);
 
         // Best selling by quantity
@@ -189,8 +194,7 @@ class ReportController extends Controller
      */
     public function promotions(Request $request): JsonResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->toDateString());
+        [$startDate, $endDate] = $this->resolveDateRange($request);
 
         // Total discount given
         $totalDiscount = Order::whereBetween('created_at', [$startDate, $endDate])
@@ -217,12 +221,33 @@ class ReportController extends Controller
             ->select(
                 'promotions.id',
                 'promotions.title',
+                'promotions.description',
                 'promotions.is_active',
+                'promotions.application_type',
+                'promotions.target_type',
+                'promotions.type',
+                'promotions.value',
+                'promotions.buy_quantity',
+                'promotions.get_quantity',
                 DB::raw('COUNT(*) as usage_count'),
                 DB::raw('SUM(orders.discount) as total_discount'),
-                DB::raw('SUM(orders.total_amount) as revenue_generated')
+                DB::raw('SUM(orders.total_amount) as revenue_generated'),
+                DB::raw('AVG(orders.discount) as avg_discount'),
+                DB::raw('AVG(orders.total_amount) as avg_order_value'),
+                DB::raw('MAX(orders.created_at) as last_used_at')
             )
-            ->groupBy('promotions.id', 'promotions.title', 'promotions.is_active')
+            ->groupBy(
+                'promotions.id',
+                'promotions.title',
+                'promotions.description',
+                'promotions.is_active',
+                'promotions.application_type',
+                'promotions.target_type',
+                'promotions.type',
+                'promotions.value',
+                'promotions.buy_quantity',
+                'promotions.get_quantity'
+            )
             ->orderByDesc('usage_count')
             ->get();
 
@@ -247,8 +272,7 @@ class ReportController extends Controller
      */
     public function customers(Request $request): JsonResponse
     {
-        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->input('end_date', now()->toDateString());
+        [$startDate, $endDate] = $this->resolveDateRange($request);
 
         // New customers
         $newCustomers = Customer::whereBetween('created_at', [$startDate, $endDate])->count();

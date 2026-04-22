@@ -45,7 +45,9 @@ class OrderItem extends Model
         parent::boot();
 
         static::saving(function ($orderItem) {
-            $orderItem->subtotal = $orderItem->quantity * $orderItem->price;
+            if ($orderItem->subtotal === null) {
+                $orderItem->subtotal = $orderItem->quantity * $orderItem->price;
+            }
         });
     }
 }

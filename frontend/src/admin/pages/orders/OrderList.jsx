@@ -307,7 +307,15 @@ const OrderList = () => {
                         </div>
                       </td>
                       <td className="px-5 py-4 text-sm font-semibold text-gray-900">
-                        Rs. {parseFloat(order.total ?? order.total_amount ?? 0).toFixed(2)}
+                        <div>
+                          <p>Rs. {parseFloat(order.total ?? order.total_amount ?? 0).toFixed(2)}</p>
+                          {Array.isArray(order.applied_promotions) && order.applied_promotions.length > 0 && (
+                            <p className="mt-1 text-xs font-semibold text-emerald-600">
+                              Promo: {order.applied_promotions[0].title}
+                              {order.applied_promotions.length > 1 ? ` +${order.applied_promotions.length - 1} more` : ""}
+                            </p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-4">
                         <div className="space-y-2">

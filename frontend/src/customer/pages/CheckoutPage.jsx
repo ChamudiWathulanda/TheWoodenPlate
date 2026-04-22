@@ -384,6 +384,9 @@ const CheckoutPage = () => {
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const previewTotalItems = (pricingPreview.line_items || []).length
+    ? pricingPreview.line_items.reduce((sum, line) => sum + Number(line.total_quantity ?? line.quantity ?? 0), 0)
+    : totalItems;
   const subtotalAmount = Number(pricingPreview.subtotal ?? total);
   const discountAmount = Number(pricingPreview.discount ?? 0);
   const payableTotal = Number(pricingPreview.total ?? total);
@@ -426,7 +429,7 @@ const CheckoutPage = () => {
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div className="rounded-2xl border border-[#8B5A2B]/25 bg-[#0F0A08]/62 px-5 py-4">
                   <p className="text-xs uppercase tracking-[0.24em] text-[#E7D2B6]/45">Items</p>
-                  <p className="mt-2 text-3xl font-bold text-[#F6E7D0]">{totalItems}</p>
+                  <p className="mt-2 text-3xl font-bold text-[#F6E7D0]">{previewTotalItems}</p>
                 </div>
                 <div className="rounded-2xl border border-[#8B5A2B]/25 bg-[#0F0A08]/62 px-5 py-4">
                   <p className="text-xs uppercase tracking-[0.24em] text-[#E7D2B6]/45">Total</p>
@@ -445,14 +448,16 @@ const CheckoutPage = () => {
                     <h2 className="mt-2 text-2xl font-bold text-[#F6E7D0]">Before we place it</h2>
                   </div>
                   <div className="rounded-full border border-[#D7B38A]/20 bg-[#D7B38A]/10 px-4 py-2 text-sm font-semibold text-[#F6E7D0]">
-                    {totalItems} items
+                    {previewTotalItems} items
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   {items.map((item) => {
                     const linePreview = previewLineItems.get(item.id);
-                    const baseLineTotal = item.price * item.quantity;
+                    const bonusQuantity = Number(linePreview?.bonus_quantity ?? 0);
+                    const totalQuantity = Number(linePreview?.total_quantity ?? item.quantity);
+                    const baseLineTotal = Number(linePreview?.line_subtotal ?? (item.price * item.quantity));
                     const discountedLineTotal = Number(linePreview?.discounted_subtotal ?? baseLineTotal);
                     const lineDiscount = Number(linePreview?.discount ?? 0);
 
@@ -472,8 +477,13 @@ const CheckoutPage = () => {
                               {item.name}
                             </h3>
                             <p className="mt-1 text-xs text-[#E7D2B6]/60">
-                              {item.quantity} x Rs. {item.price.toLocaleString()}
+                              {item.quantity} paid x Rs. {item.price.toLocaleString()}
                             </p>
+                            {bonusQuantity > 0 && (
+                              <p className="mt-2 text-xs font-semibold text-emerald-300">
+                                + {bonusQuantity} free item{bonusQuantity > 1 ? 's' : ''} added, total {totalQuantity}
+                              </p>
+                            )}
                             {linePreview?.applied_promotion && (
                               <p className="mt-2 text-xs font-semibold text-emerald-300">
                                 {linePreview.applied_promotion.title} applied
@@ -486,9 +496,9 @@ const CheckoutPage = () => {
                                 Rs. {baseLineTotal.toLocaleString()}
                               </p>
                             )}
-                            <p className="text-sm font-bold text-[#C98A5A]">
-                              Rs. {discountedLineTotal.toLocaleString()}
-                            </p>
+                              <p className="text-sm font-bold text-[#C98A5A]">
+                                Rs. {discountedLineTotal.toLocaleString()}
+                              </p>
                           </div>
                         </div>
                       </div>
@@ -525,6 +535,11 @@ const CheckoutPage = () => {
                                     ? 'Item discount'
                                     : 'Buy x get y'}
                               </p>
+                              {Number(promotion.bonus_quantity || 0) > 0 && (
+                                <p className="mt-1 text-xs font-semibold text-emerald-300">
+                                  {Number(promotion.bonus_quantity)} free item{Number(promotion.bonus_quantity) > 1 ? 's' : ''} added
+                                </p>
+                              )}
                             </div>
                             <p className="text-sm font-bold text-emerald-300">
                               - Rs. {Number(promotion.discount || 0).toLocaleString()}

@@ -1,76 +1,86 @@
 import React, { useState } from "react";
+import toast from "react-hot-toast";
+
+const API_BASE = "http://localhost:8000";
 
 const ContactSection = () => {
   const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!form.name || !form.email || !form.message) {
-      alert("Please fill all required fields.");
+      toast.error("Please fill all required fields.");
       return;
     }
 
-    console.log("Contact message:", form);
-    alert("Message sent! (Later we will connect API)");
-    setForm({ name: "", email: "", message: "" });
+    try {
+      setSubmitting(true);
+
+      const response = await fetch(`${API_BASE}/api/public/contact-messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit message");
+      }
+
+      toast.success("Message sent successfully");
+      setForm({ name: "", email: "", message: "" });
+    } catch (error) {
+      toast.error("Failed to send message");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <section id="contact" className="py-20 bg-[#0F0A08] text-[#E7D2B6]">
-      <div className="max-w-6xl mx-auto px-4">
-        {/* Title */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-extrabold text-[#C98A5A]">
-            Contact Us
-          </h2>
-          <p className="mt-3 text-[#BFA58A] max-w-2xl mx-auto">
-            Have a question, feedback, or a special request? Send us a message
-            anytime — we’ll get back to you as soon as possible.
+    <section id="contact" className="bg-[#0F0A08] py-20 text-[#E7D2B6]">
+      <div className="mx-auto max-w-6xl px-4">
+        <div className="mb-12 text-center">
+          <h2 className="text-4xl font-extrabold text-[#C98A5A] md:text-5xl">Contact Us</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-[#BFA58A]">
+            Have a question, feedback, or a special request? Send us a message anytime and we will
+            get back to you as soon as possible.
           </p>
         </div>
 
-        {/* Form Card (Centered) */}
-        <div className="max-w-3xl mx-auto">
-          <div
-            className="rounded-3xl border border-[#8B5A2B]/50 bg-[#1A110D] p-6 md:p-10
-                       shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
-          >
-            {/* Small header inside card */}
+        <div className="mx-auto max-w-3xl">
+          <div className="rounded-3xl border border-[#8B5A2B]/50 bg-[#1A110D] p-6 shadow-[0_25px_80px_rgba(0,0,0,0.55)] md:p-10">
             <div className="mb-8">
-              <h3 className="text-2xl md:text-3xl font-semibold text-[#E7D2B6]">
-                Send a Message
-              </h3>
-              <p className="mt-2 text-[#BFA58A] text-sm md:text-base">
+              <h3 className="text-2xl font-semibold text-[#E7D2B6] md:text-3xl">Send a Message</h3>
+              <p className="mt-2 text-sm text-[#BFA58A] md:text-base">
                 Fill the form below and our team will reply shortly.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-[#E7D2B6] mb-2">
+                <label className="mb-2 block text-sm font-medium text-[#E7D2B6]">
                   Name <span className="text-[#C98A5A]">*</span>
                 </label>
                 <input
                   name="name"
                   value={form.name}
                   onChange={handleChange}
+                  disabled={submitting}
                   placeholder="Your name"
-                  className="w-full rounded-2xl border border-[#8B5A2B]/40 bg-black/25 px-5 py-4
-                             text-[#E7D2B6] placeholder:text-[#BFA58A]/60
-                             focus:outline-none focus:ring-2 focus:ring-[#C98A5A]/60"
+                  className="w-full rounded-2xl border border-[#8B5A2B]/40 bg-black/25 px-5 py-4 text-[#E7D2B6] placeholder:text-[#BFA58A]/60 focus:outline-none focus:ring-2 focus:ring-[#C98A5A]/60"
                 />
               </div>
 
-              {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-[#E7D2B6] mb-2">
+                <label className="mb-2 block text-sm font-medium text-[#E7D2B6]">
                   Email <span className="text-[#C98A5A]">*</span>
                 </label>
                 <input
@@ -78,42 +88,36 @@ const ContactSection = () => {
                   name="email"
                   value={form.email}
                   onChange={handleChange}
+                  disabled={submitting}
                   placeholder="your@email.com"
-                  className="w-full rounded-2xl border border-[#8B5A2B]/40 bg-black/25 px-5 py-4
-                             text-[#E7D2B6] placeholder:text-[#BFA58A]/60
-                             focus:outline-none focus:ring-2 focus:ring-[#C98A5A]/60"
+                  className="w-full rounded-2xl border border-[#8B5A2B]/40 bg-black/25 px-5 py-4 text-[#E7D2B6] placeholder:text-[#BFA58A]/60 focus:outline-none focus:ring-2 focus:ring-[#C98A5A]/60"
                 />
               </div>
 
-              {/* Message */}
               <div>
-                <label className="block text-sm font-medium text-[#E7D2B6] mb-2">
+                <label className="mb-2 block text-sm font-medium text-[#E7D2B6]">
                   Message <span className="text-[#C98A5A]">*</span>
                 </label>
                 <textarea
                   name="message"
                   value={form.message}
                   onChange={handleChange}
+                  disabled={submitting}
                   rows={7}
                   placeholder="Write your message..."
-                  className="w-full rounded-2xl border border-[#8B5A2B]/40 bg-black/25 px-5 py-4
-                             text-[#E7D2B6] placeholder:text-[#BFA58A]/60
-                             focus:outline-none focus:ring-2 focus:ring-[#C98A5A]/60 resize-none"
+                  className="w-full resize-none rounded-2xl border border-[#8B5A2B]/40 bg-black/25 px-5 py-4 text-[#E7D2B6] placeholder:text-[#BFA58A]/60 focus:outline-none focus:ring-2 focus:ring-[#C98A5A]/60"
                 />
               </div>
 
-              {/* Button */}
               <button
                 type="submit"
-                className="w-full inline-flex items-center justify-center px-6 py-4 rounded-full
-                           bg-gradient-to-r from-[#C98A5A] to-[#D7B38A]
-                           text-[#0F0A08] font-bold text-base
-                           hover:brightness-110 transition"
+                disabled={submitting}
+                className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#C98A5A] to-[#D7B38A] px-6 py-4 text-base font-bold text-[#0F0A08] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Send Message
+                {submitting ? "Sending..." : "Send Message"}
               </button>
 
-              <p className="text-xs text-[#BFA58A] text-center pt-2">
+              <p className="pt-2 text-center text-xs text-[#BFA58A]">
                 We typically respond within a few hours.
               </p>
             </form>

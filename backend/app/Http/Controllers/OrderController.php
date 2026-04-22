@@ -32,7 +32,7 @@ class OrderController extends Controller
             return response()->json(['message' => 'Customer profile not found'], 404);
         }
 
-        $orders = Order::with(['items.product', 'customer'])
+        $orders = Order::with(['items.product', 'customer', 'promotion'])
             ->where('customer_id', $customerId)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -103,7 +103,7 @@ class OrderController extends Controller
      */
     public function show($id, Request $request)
     {
-        $order = Order::with(['items.product', 'customer'])->findOrFail($id);
+        $order = Order::with(['items.product', 'customer', 'promotion'])->findOrFail($id);
 
         $user = $request->user('sanctum');
 
@@ -144,7 +144,7 @@ class OrderController extends Controller
      */
     public function adminIndex(Request $request)
     {
-        $query = Order::with(['items.product', 'customer']);
+        $query = Order::with(['items.product', 'customer', 'promotion']);
 
         // Filter by status if provided
         if ($request->has('status')) {
@@ -161,19 +161,19 @@ class OrderController extends Controller
      */
     public function updateStatus(UpdateOrderStatusRequest $request, $id)
     {
-        $order = Order::with(['items.product', 'customer'])->findOrFail($id);
+        $order = Order::with(['items.product', 'customer', 'promotion'])->findOrFail($id);
         $previousStatus = $order->status;
 
         // Use the updateStatus method which handles locking
         $order->updateStatus($request->status);
 
         if ($previousStatus !== $request->status) {
-            $this->sendStatusUpdateEmail($order->fresh(['items.product', 'customer']), $request->status);
+            $this->sendStatusUpdateEmail($order->fresh(['items.product', 'customer', 'promotion']), $request->status);
         }
 
         return response()->json([
             'message' => 'Order status updated successfully',
-            'order' => $order->load(['items.product', 'customer'])
+            'order' => $order->load(['items.product', 'customer', 'promotion'])
         ]);
     }
 
@@ -191,7 +191,7 @@ class OrderController extends Controller
 
         return response()->json([
             'message' => 'Payment status updated successfully',
-            'order' => $order->load(['items.product', 'customer'])
+            'order' => $order->load(['items.product', 'customer', 'promotion'])
         ]);
     }
 
@@ -200,7 +200,7 @@ class OrderController extends Controller
      */
     public function generateInvoice($id, Request $request)
     {
-        $order = Order::with(['items.product', 'customer'])->findOrFail($id);
+        $order = Order::with(['items.product', 'customer', 'promotion'])->findOrFail($id);
 
         $user = $request->user('sanctum');
 

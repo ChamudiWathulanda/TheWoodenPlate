@@ -14,6 +14,9 @@ const severityStyles = {
 const sectionTitles = {
   "/admin/dashboard": "Dashboard",
   "/admin/customers": "Customers",
+  "/admin/contact-messages": "Messages",
+  "/admin/newsletter": "Newsletter",
+  "/admin/email-campaigns": "Email Campaigns",
   "/admin/orders": "Orders",
   "/admin/products": "Products",
   "/admin/promotions": "Promotions",
@@ -281,7 +284,7 @@ const AdminNavbar = ({ onMenuClick, isMobileSidebarOpen = false }) => {
                     <div>
                       <p className="text-sm font-semibold text-slate-900">Notifications</p>
                       <p className="text-xs text-slate-500">
-                        Orders, customers, promotions, stock and reservations
+                        Orders, customers, messages, newsletter, campaigns, stock and reservations
                       </p>
                     </div>
                     <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700">

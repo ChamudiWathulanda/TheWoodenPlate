@@ -202,7 +202,7 @@ class PublicOrderController extends Controller
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
-                    'quantity' => $lineItem['quantity'],
+                    'quantity' => $lineItem['total_quantity'] ?? $lineItem['quantity'],
                     'price' => $lineItem['unit_price'],
                     'subtotal' => $lineItem['discounted_subtotal'],
                 ]);

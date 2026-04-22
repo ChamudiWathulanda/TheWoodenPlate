@@ -29,6 +29,11 @@ import CustomerList from './admin/pages/customers/CustomerList.jsx'
 import CreateCustomer from './admin/pages/customers/CreateCustomer.jsx'
 import EditCustomer from './admin/pages/customers/EditCustomer.jsx'
 import ViewCustomer from './admin/pages/customers/ViewCustomer.jsx'
+import ContactMessageList from './admin/pages/contact-messages/ContactMessageList.jsx'
+import ViewContactMessage from './admin/pages/contact-messages/ViewContactMessage.jsx'
+import NewsletterSubscribers from './admin/pages/newsletter/NewsletterSubscribers.jsx'
+import EmailCampaigns from './admin/pages/email-campaigns/EmailCampaigns.jsx'
+import ViewEmailCampaign from './admin/pages/email-campaigns/ViewEmailCampaign.jsx'
 
 // Order Pages
 import OrderList from './admin/pages/orders/OrderList.jsx'
@@ -226,6 +231,12 @@ function App() {
           <Route path="/admin/customers/create" element={<CreateCustomer />} />
           <Route path="/admin/customers/edit/:id" element={<EditCustomer />} />
           <Route path="/admin/customers/view/:id" element={<ViewCustomer />} />
+
+          <Route path="/admin/contact-messages" element={<ContactMessageList />} />
+          <Route path="/admin/contact-messages/:id" element={<ViewContactMessage />} />
+          <Route path="/admin/newsletter" element={<NewsletterSubscribers />} />
+          <Route path="/admin/email-campaigns" element={<EmailCampaigns />} />
+          <Route path="/admin/email-campaigns/:id" element={<ViewEmailCampaign />} />
           
           {/* Order Routes */}
           <Route path="/admin/orders" element={<OrderList />} />

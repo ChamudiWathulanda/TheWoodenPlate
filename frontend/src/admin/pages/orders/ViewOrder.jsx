@@ -63,6 +63,46 @@ const downloadReceipt = async (orderId) => {
   await downloadBlobResponse(res, `order-${orderId}-receipt`);
 };
 
+const formatPromotionRule = (promotion) => {
+  if (!promotion) return "No promotion";
+
+  if (promotion.application_type === "bxgy") {
+    return `Buy ${promotion.buy_quantity || 1} Get ${promotion.get_quantity || 1}`;
+  }
+
+  if (promotion.type === "fixed") {
+    return `Rs. ${Number(promotion.value || 0).toFixed(2)} off`;
+  }
+
+  return `${Number(promotion.value || 0)}% off`;
+};
+
+const formatPromotionScope = (promotion) => {
+  if (!promotion) return "-";
+
+  if (promotion.application_type === "order") return "Order level";
+  if (promotion.application_type === "item") return "Item level";
+  return "Buy X Get Y";
+};
+
+const getBonusQuantityFromOrderItem = (item) => {
+  const quantity = Number(item.quantity ?? 0);
+  const unitPrice = Number(item.price ?? 0);
+  const subtotal = Number(item.subtotal ?? quantity * unitPrice);
+
+  if (quantity <= 0 || unitPrice <= 0) {
+    return 0;
+  }
+
+  const paidQuantityEstimate = subtotal / unitPrice;
+  const roundedPaidQuantity = Math.round(paidQuantityEstimate);
+  const hasWholePaidQuantity = Math.abs(paidQuantityEstimate - roundedPaidQuantity) < 0.001;
+
+  return hasWholePaidQuantity && roundedPaidQuantity < quantity
+    ? quantity - roundedPaidQuantity
+    : 0;
+};
+
 const ViewOrder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -160,6 +200,10 @@ const ViewOrder = () => {
   const receiptUrl = getReceiptUrl(order.payment_receipt_path);
   const hasReceipt = Boolean(receiptUrl);
   const receiptIsPdf = isPdfReceipt(order.payment_receipt_path);
+  const appliedPromotions = Array.isArray(order.applied_promotions) ? order.applied_promotions : [];
+  const subtotalAmount = Number(order.subtotal ?? order.total_amount ?? 0);
+  const discountAmount = Number(order.discount ?? order.discount_amount ?? 0);
+  const totalAmount = Number(order.total ?? order.total_amount ?? 0);
 
   return (
     <AdminLayout>
@@ -257,25 +301,36 @@ const ViewOrder = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {order.items?.map((item) => (
-                      <tr key={item.id}>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          {item.product?.name || "N/A"}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {item.product?.description || "-"}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900">
-                          Rs. {parseFloat(item.price).toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900">
-                          {item.quantity}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
-                          Rs. {parseFloat(item.subtotal).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
+                    {order.items?.map((item) => {
+                      const bonusQuantity = getBonusQuantityFromOrderItem(item);
+
+                      return (
+                        <tr key={item.id}>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                            <div>
+                              <p>{item.product?.name || "N/A"}</p>
+                              {bonusQuantity > 0 && (
+                                <p className="mt-1 text-xs font-semibold text-emerald-600">
+                                  Includes {bonusQuantity} free item{bonusQuantity > 1 ? "s" : ""}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {item.product?.description || "-"}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-900">
+                            Rs. {parseFloat(item.price).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-900">
+                            {item.quantity}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
+                            Rs. {parseFloat(item.subtotal).toFixed(2)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot className="bg-gray-50">
                     <tr>
@@ -286,12 +341,90 @@ const ViewOrder = () => {
                         Total:
                       </td>
                       <td className="px-4 py-3 text-right text-lg font-bold text-gray-900">
-                        Rs. {parseFloat(order.total_amount).toFixed(2)}
+                        Rs. {totalAmount.toFixed(2)}
                       </td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 md:p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Promotion Details</h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Shows the promotion rules and discount applied to this order.
+                  </p>
+                </div>
+                {appliedPromotions.length > 0 && (
+                  <span className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 border border-emerald-200">
+                    Rs. {discountAmount.toFixed(2)} saved
+                  </span>
+                )}
+              </div>
+
+              {appliedPromotions.length === 0 ? (
+                <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-sm text-gray-500">
+                  No promotion was applied to this order.
+                </div>
+              ) : (
+                <div className="mt-5 space-y-4">
+                  {appliedPromotions.map((promotion) => {
+                    const promotionMeta =
+                      order.promotion && order.promotion.id === promotion.promotion_id
+                        ? order.promotion
+                        : {
+                            ...promotion,
+                            title: promotion.title,
+                            application_type: promotion.application_type,
+                            target_type: promotion.target_type,
+                          };
+
+                    return (
+                      <div
+                        key={promotion.promotion_id}
+                        className="rounded-2xl border border-emerald-200 bg-emerald-50/60 px-5 py-4"
+                      >
+                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <p className="text-base font-semibold text-gray-900">{promotion.title}</p>
+                            <p className="mt-1 text-sm text-gray-600">
+                              {formatPromotionScope(promotionMeta)} • {formatPromotionRule(promotionMeta)}
+                            </p>
+                            {Number(promotion.bonus_quantity || 0) > 0 && (
+                              <p className="mt-2 text-sm font-semibold text-emerald-700">
+                                Free items added: {Number(promotion.bonus_quantity)}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-left md:text-right">
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Discount Applied</p>
+                            <p className="mt-1 text-lg font-bold text-emerald-700">
+                              Rs. {Number(promotion.discount || 0).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4">
+                      <p className="text-xs uppercase tracking-wide text-gray-500">Subtotal</p>
+                      <p className="mt-2 text-lg font-semibold text-gray-900">Rs. {subtotalAmount.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4">
+                      <p className="text-xs uppercase tracking-wide text-emerald-700">Promotion Discount</p>
+                      <p className="mt-2 text-lg font-semibold text-emerald-800">Rs. {discountAmount.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4">
+                      <p className="text-xs uppercase tracking-wide text-blue-700">Payable Total</p>
+                      <p className="mt-2 text-lg font-semibold text-blue-800">Rs. {totalAmount.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Notes */}
@@ -468,10 +601,22 @@ const ViewOrder = () => {
                   <span className="font-semibold">{order.items?.length || 0}</span>
                 </div>
                 <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-semibold">Rs. {subtotalAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Promotion Discount:</span>
+                  <span className="font-semibold text-emerald-600">Rs. {discountAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Total Amount:</span>
                   <span className="font-semibold text-lg text-blue-600">
-                    Rs. {parseFloat(order.total_amount).toFixed(2)}
+                    Rs. {totalAmount.toFixed(2)}
                   </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Promotions Used:</span>
+                  <span className="font-semibold">{appliedPromotions.length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Created:</span>
