@@ -36,6 +36,7 @@ export default function MenuPage() {
         const cats = catData.data || [];
         const catsWithFullImage = cats.map(cat => ({
           ...cat,
+          id: String(cat.id),
           image: cat.image ? `http://localhost:8000/storage/${cat.image}` : null
         }));
         setCategories([{ id: 'all', name: 'All Items' }, ...catsWithFullImage]);
@@ -62,15 +63,22 @@ export default function MenuPage() {
 
   useEffect(() => {
     if (categories.length > 0) {
-      const catExists = categories.some(c => c.id === initialCat || c.value === initialCat);
-      setActiveCat(catExists ? initialCat : "all");
+      const normalizedInitialCat = String(initialCat);
+      const catExists = categories.some(
+        (c) => String(c.id || c.value) === normalizedInitialCat
+      );
+      setActiveCat(catExists ? normalizedInitialCat : "all");
     }
   }, [categories, initialCat]);
 
   const filtered = useMemo(() => {
     let list = [...menuItems];
     if (activeCat !== "all") {
-      list = list.filter((i) => i.category_id === activeCat || i.category?.id === activeCat);
+      list = list.filter(
+        (i) =>
+          String(i.category_id) === String(activeCat) ||
+          String(i.category?.id) === String(activeCat)
+      );
     }
     if (q.trim()) {
       const t = q.toLowerCase();
@@ -123,7 +131,7 @@ export default function MenuPage() {
             {/* Category tabs */}
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               {categories.map((c) => {
-                const catId = c.id || c.value;
+                const catId = String(c.id || c.value);
                 const catName = c.name || c.label;
                 const active = catId === activeCat;
                 return (

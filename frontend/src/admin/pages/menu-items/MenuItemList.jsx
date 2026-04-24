@@ -89,6 +89,16 @@ const MenuItemList = () => {
     }
   };
 
+  const buildMenuItemUpdatePayload = (item, overrides = {}) => ({
+    category_id: item.category_id,
+    name: item.name,
+    price: item.price,
+    description: item.description || '',
+    is_available: item.is_available,
+    is_popular: item.is_popular,
+    ...overrides,
+  });
+
   const toggleAvailability = async (item) => {
     try {
       const res = await fetch(`http://localhost:8000/api/admin/menu-items/${item.id}`, {
@@ -97,11 +107,11 @@ const MenuItemList = () => {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...item,
-          category_id: item.category_id,
-          is_available: !item.is_available,
-        }),
+        body: JSON.stringify(
+          buildMenuItemUpdatePayload(item, {
+            is_available: !item.is_available,
+          })
+        ),
       });
 
       if (!res.ok) throw new Error('Failed to update availability');
@@ -121,11 +131,11 @@ const MenuItemList = () => {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...item,
-          category_id: item.category_id,
-          is_popular: !item.is_popular,
-        }),
+        body: JSON.stringify(
+          buildMenuItemUpdatePayload(item, {
+            is_popular: !item.is_popular,
+          })
+        ),
       });
 
       if (!res.ok) throw new Error('Failed to update popular status');

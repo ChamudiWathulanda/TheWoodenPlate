@@ -334,9 +334,9 @@ const InventoryDashboard = () => {
           <ul className="text-sm text-blue-800 space-y-1">
             <li><strong>Opening Stock:</strong> Stock at the start of selected month</li>
             <li><strong>Stock IN:</strong> Total quantity purchased/received this month</li>
-            <li><strong>Usage (OUT):</strong> Total quantity used/consumed this month (me mase kochchara giyada)</li>
+            <li><strong>Usage (OUT):</strong> Total quantity used/consumed this month </li>
             <li><strong>Closing Stock:</strong> Current stock level</li>
-            <li><strong>Avg Usage (3M):</strong> Average monthly usage over last 3 months (normal maseta kochchara)</li>
+            <li><strong>Avg Usage (3M):</strong> Average monthly usage over last 3 months </li>
             <li><strong>Suggested Purchase:</strong> Recommended quantity to buy based on usage patterns</li>
           </ul>
         </div>

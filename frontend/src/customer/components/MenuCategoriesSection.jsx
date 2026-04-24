@@ -1,39 +1,45 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const categories = [
-  {
-    id: "all",
-    label: "All Items",
-    desc: "Browse everything we serve",
-    image:
-      "https://images.unsplash.com/photo-1561758033-d89a9ad46330?q=80&w=1200&auto=format&fit=crop",
-  },
-  {
-    id: "burgers",
-    label: "Burgers",
-    desc: "Juicy classics & specials",
-    image:
-      "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1200&auto=format&fit=crop",
-  },
-  {
-    id: "sides",
-    label: "Sides",
-    desc: "Fries, nuggets & more",
-    image:
-      "https://images.unsplash.com/photo-1615332517896-7e21b1a9d9f7?q=80&w=1200&auto=format&fit=crop",
-  },
-  {
-    id: "drinks",
-    label: "Drinks",
-    desc: "Refresh your vibe",
-    image:
-      "https://images.unsplash.com/photo-1541971875076-8f970d573be6?q=80&w=1200&auto=format&fit=crop",
-  },
-];
 
 export default function MenuCategoriesSection() {
   const navigate = useNavigate();
+  const [categories, setCategories] = useState([
+    {
+      id: "all",
+      label: "All Items",
+      desc: "Browse everything we serve",
+      image:
+        "https://images.unsplash.com/photo-1561758033-d89a9ad46330?q=80&w=1200&auto=format&fit=crop",
+    },
+  ]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/public/categories");
+        if (!res.ok) throw new Error("Failed to fetch categories");
+
+        const data = await res.json();
+        const dynamicCategories = (data.data || []).map((category) => ({
+          id: String(category.id),
+          label: category.name,
+          desc: `Explore ${category.name.toLowerCase()} from our kitchen`,
+          image: category.image
+            ? `http://localhost:8000/storage/${category.image}`
+            : "https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=1200&auto=format&fit=crop",
+        }));
+
+        setCategories((prev) => [prev[0], ...dynamicCategories]);
+      } catch (error) {
+        console.error("Failed to load home menu categories:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const goMenu = (catId) => {
     navigate(`/menu?cat=${encodeURIComponent(catId)}`);
@@ -51,6 +57,9 @@ export default function MenuCategoriesSection() {
           </p>
         </div>
 
+        {loading ? (
+          <div className="text-center text-[#BFA58A]">Loading menu categories...</div>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {categories.map((c) => (
             <button
@@ -82,6 +91,7 @@ export default function MenuCategoriesSection() {
             </button>
           ))}
         </div>
+        )}
       </div>
     </section>
   );

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
 import toast from "react-hot-toast";
+import { normalizeCustomerForm, validateCustomerForm } from "./customerValidation";
 
 const EditCustomer = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const EditCustomer = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const token = localStorage.getItem("admin_token");
 
@@ -54,12 +56,24 @@ const EditCustomer = () => {
   }, [id, navigate, token]);
 
   const handleChange = (e) => {
-    setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData((p) => ({ ...p, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (submitting) return;
+    const normalizedData = normalizeCustomerForm(formData);
+    const validationErrors = validateCustomerForm(normalizedData);
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      toast.error("Please fix the highlighted customer details.");
+      return;
+    }
+
+    setFormData(normalizedData);
     setShowConfirm(true);
   };
 
@@ -84,6 +98,12 @@ const EditCustomer = () => {
       if (!res.ok) {
         // Handle validation errors (422)
         if (res.status === 422 && data.errors) {
+          setErrors((prev) => ({
+            ...prev,
+            ...Object.fromEntries(
+              Object.entries(data.errors).map(([field, messages]) => [field, messages[0]])
+            ),
+          }));
           const errorMessages = Object.values(data.errors).flat();
           errorMessages.forEach((msg) => toast.error(msg));
           return;
@@ -170,10 +190,13 @@ const EditCustomer = () => {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900
-                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                    className={`w-full rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-900
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition ${
+                                 errors.name ? "border-red-500" : "border-gray-200"
+                               }`}
                     placeholder="Enter customer name"
                   />
+                  {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}
                 </div>
 
                 {/* Email */}
@@ -187,10 +210,13 @@ const EditCustomer = () => {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900
-                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                    className={`w-full rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-900
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition ${
+                                 errors.email ? "border-red-500" : "border-gray-200"
+                               }`}
                     placeholder="Enter email"
                   />
+                  {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
                 </div>
 
                 {/* Phone */}
@@ -201,24 +227,30 @@ const EditCustomer = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900
-                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                    className={`w-full rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-900
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition ${
+                                 errors.phone ? "border-red-500" : "border-gray-200"
+                               }`}
                     placeholder="Enter phone"
                   />
+                  {errors.phone && <p className="text-sm text-red-600">{errors.phone}</p>}
                 </div>
 
                 {/* Address */}
                 <div className="flex flex-col gap-2">
                   <p className="text-xs font-semibold text-gray-500">Address</p>
-                  <input
-                    type="text"
+                  <textarea
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900
-                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                    rows={3}
+                    className={`w-full rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-900
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition resize-none ${
+                                 errors.address ? "border-red-500" : "border-gray-200"
+                               }`}
                     placeholder="Enter address"
                   />
+                  {errors.address && <p className="text-sm text-red-600">{errors.address}</p>}
                 </div>
               </div>
 
@@ -228,7 +260,7 @@ const EditCustomer = () => {
                   type="submit"
                   disabled={submitting}
                   className={`rounded-md cursor-pointer px-4 py-2 text-sm font-medium transition ${
-                    loading
+                    submitting
                       ? "bg-blue-400 cursor-not-allowed text-white"
                       : "bg-blue-600 hover:bg-blue-700 text-white"
                   }`}

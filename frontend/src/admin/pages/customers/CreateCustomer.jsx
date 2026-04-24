@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
 import toast from "react-hot-toast";
+import { normalizeCustomerForm, validateCustomerForm } from "./customerValidation";
 
 const CreateCustomer = () => {
   const navigate = useNavigate();
@@ -14,15 +15,27 @@ const CreateCustomer = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const token = localStorage.getItem("admin_token");
 
   const handleChange = (e) => {
-    setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData((p) => ({ ...p, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const normalizedData = normalizeCustomerForm(formData);
+    const validationErrors = validateCustomerForm(normalizedData);
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      toast.error("Please fix the highlighted customer details.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -32,7 +45,7 @@ const CreateCustomer = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(normalizedData),
       });
 
       const data = await res.json();
@@ -40,6 +53,12 @@ const CreateCustomer = () => {
       if (!res.ok) {
         // Handle validation errors (422)
         if (res.status === 422 && data.errors) {
+          setErrors((prev) => ({
+            ...prev,
+            ...Object.fromEntries(
+              Object.entries(data.errors).map(([field, messages]) => [field, messages[0]])
+            ),
+          }));
           const errorMessages = Object.values(data.errors).flat();
           errorMessages.forEach((msg) => toast.error(msg));
           return;
@@ -112,9 +131,11 @@ const CreateCustomer = () => {
                     onChange={handleChange}
                     required
                     placeholder="Enter customer name"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900
-                               focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full rounded-lg bg-white px-4 py-2.5 text-gray-900
+                               focus:outline-none focus:ring-2 focus:ring-blue-500
+                               ${errors.name ? "border-red-500" : "border-gray-300"}`}
                   />
+                  {errors.name && <p className="mt-2 text-sm text-red-600">{errors.name}</p>}
                 </div>
 
                 {/* Email */}
@@ -129,9 +150,12 @@ const CreateCustomer = () => {
                     onChange={handleChange}
                     required
                     placeholder="customer@example.com"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900
-                               focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full rounded-lg bg-white px-4 py-2.5 text-gray-900
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                 errors.email ? "border-red-500" : "border-gray-300"
+                               }`}
                   />
+                  {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
                 </div>
 
                 {/* Phone */}
@@ -146,10 +170,12 @@ const CreateCustomer = () => {
                     onChange={handleChange}
                     placeholder="07xxxxxxxx"
                     maxLength={15}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900
-                               focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full rounded-lg bg-white px-4 py-2.5 text-gray-900
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                 errors.phone ? "border-red-500" : "border-gray-300"
+                               }`}
                   />
-                 
+                  {errors.phone && <p className="mt-2 text-sm text-red-600">{errors.phone}</p>}
                 </div>
 
                 
@@ -166,9 +192,12 @@ const CreateCustomer = () => {
                   onChange={handleChange}
                   rows={3}
                   placeholder="Enter address"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900
-                             focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className={`w-full rounded-lg bg-white px-4 py-2.5 text-gray-900
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
+                               errors.address ? "border-red-500" : "border-gray-300"
+                             }`}
                 />
+                {errors.address && <p className="mt-2 text-sm text-red-600">{errors.address}</p>}
               </div>
 
               {/* Buttons */}
