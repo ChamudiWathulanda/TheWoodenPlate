@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
-import { clearCustomerSession } from "../../utils/authStorage";
+import { clearCustomerSession, persistAdminNotificationIdentity } from "../../utils/authStorage";
 
 /**
  * Admin Login Component
@@ -79,6 +79,7 @@ const AdminLogin = () => {
       clearCustomerSession();
       localStorage.setItem("admin_token", data.token);
       localStorage.setItem("admin_user", JSON.stringify(data.user || {}));
+      persistAdminNotificationIdentity(data.user || {});
       
       toast.success("Login successful! Redirecting...", { id: loadingToast });
       

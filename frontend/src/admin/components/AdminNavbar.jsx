@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import {
+  clearAdminSession,
+  getStoredAdminNotificationIdentity,
+  persistAdminNotificationIdentity,
+} from "../../utils/authStorage";
 
 const API_BASE = "http://localhost:8000";
-const LAST_SEEN_KEY = "admin_notifications_last_seen_at";
+const READ_NOTIFICATIONS_KEY = "admin_notifications_read_items";
 
 const severityStyles = {
   info: "bg-sky-50 text-sky-700 ring-sky-100",
@@ -68,6 +73,11 @@ const formatDateLabel = new Intl.DateTimeFormat("en-LK", {
   day: "numeric",
 });
 
+const getNotificationStorageKey = (adminUser) => {
+  const identity = adminUser || "default";
+  return `${READ_NOTIFICATIONS_KEY}_${identity}`;
+};
+
 const AdminNavbar = ({ onMenuClick, isMobileSidebarOpen = false }) => {
   const [open, setOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -75,22 +85,38 @@ const AdminNavbar = ({ onMenuClick, isMobileSidebarOpen = false }) => {
   const [notifications, setNotifications] = useState([]);
   const [loadingNotifications, setLoadingNotifications] = useState(true);
   const [notificationError, setNotificationError] = useState("");
-  const [lastSeenAt, setLastSeenAt] = useState(() => localStorage.getItem(LAST_SEEN_KEY) || "");
+  const [readNotificationIds, setReadNotificationIds] = useState({});
+  const [notificationIdentity, setNotificationIdentity] = useState(() => getStoredAdminNotificationIdentity());
   const navigate = useNavigate();
   const location = useLocation();
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
+  const notificationStorageKey = getNotificationStorageKey(notificationIdentity);
 
   useEffect(() => {
     const stored = localStorage.getItem("admin_user");
     if (stored) {
       try {
-        setAdminUser(JSON.parse(stored));
+        const parsedUser = JSON.parse(stored);
+        setAdminUser(parsedUser);
+        setNotificationIdentity(persistAdminNotificationIdentity(parsedUser));
       } catch {
         setAdminUser({});
+        setNotificationIdentity(getStoredAdminNotificationIdentity());
       }
+    } else {
+      setNotificationIdentity(getStoredAdminNotificationIdentity());
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(notificationStorageKey);
+      setReadNotificationIds(stored ? JSON.parse(stored) : {});
+    } catch {
+      setReadNotificationIds({});
+    }
+  }, [notificationStorageKey]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -167,24 +193,29 @@ const AdminNavbar = ({ onMenuClick, isMobileSidebarOpen = false }) => {
   }, []);
 
   const unreadCount = useMemo(() => {
-    if (!lastSeenAt) {
-      return notifications.length;
-    }
+    return notifications.filter((item) => !readNotificationIds[item.id]).length;
+  }, [notifications, readNotificationIds]);
 
-    const seenTime = new Date(lastSeenAt).getTime();
-    return notifications.filter((item) => new Date(item.created_at).getTime() > seenTime).length;
-  }, [lastSeenAt, notifications]);
+  const markNotificationAsRead = (notificationId) => {
+    if (!notificationId) return;
 
-  const markNotificationsAsSeen = () => {
-    const seenAt = new Date().toISOString();
-    localStorage.setItem(LAST_SEEN_KEY, seenAt);
-    setLastSeenAt(seenAt);
+    setReadNotificationIds((current) => {
+      if (current[notificationId]) {
+        return current;
+      }
+
+      const next = {
+        ...current,
+        [notificationId]: true,
+      };
+
+      localStorage.setItem(notificationStorageKey, JSON.stringify(next));
+      return next;
+    });
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("admin_token");
-    localStorage.removeItem("admin_user");
-    localStorage.removeItem(LAST_SEEN_KEY);
+    clearAdminSession();
     navigate("/admin/login", { replace: true });
   };
 
@@ -198,19 +229,15 @@ const AdminNavbar = ({ onMenuClick, isMobileSidebarOpen = false }) => {
     setNotificationOpen((current) => !current);
   };
 
-  const handleNotificationClick = (link) => {
-    markNotificationsAsSeen();
+  const handleNotificationClick = (item) => {
+    markNotificationAsRead(item?.id);
     setNotificationOpen(false);
-    if (link) {
-      navigate(link);
+    if (item?.link) {
+      navigate(item.link);
     }
   };
 
-  const isUnreadNotification = (createdAt) => {
-    if (!createdAt) return !lastSeenAt;
-    if (!lastSeenAt) return true;
-    return new Date(createdAt).getTime() > new Date(lastSeenAt).getTime();
-  };
+  const isUnreadNotification = (notificationId) => !readNotificationIds[notificationId];
 
   const title = getSectionTitle(location.pathname);
   const adminInitial = (adminUser?.name || "A").charAt(0).toUpperCase();
@@ -302,13 +329,13 @@ const AdminNavbar = ({ onMenuClick, isMobileSidebarOpen = false }) => {
                     <div className="px-5 py-6 text-sm text-slate-500">No notifications right now.</div>
                   ) : (
                     notifications.map((item) => {
-                      const unread = isUnreadNotification(item.created_at);
+                      const unread = isUnreadNotification(item.id);
 
                       return (
                         <button
                           type="button"
                           key={item.id}
-                          onClick={() => handleNotificationClick(item.link)}
+                          onClick={() => handleNotificationClick(item)}
                           className={`w-full border-b border-slate-100 px-5 py-3 text-left transition ${
                             unread ? "bg-orange-50/35 hover:bg-orange-50/60" : "hover:bg-slate-50"
                           }`}
